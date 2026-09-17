@@ -8,6 +8,7 @@ namespace CClean.Tests;
 public class ExperimentSandboxTests
 {
     [Theory]
+    [Trait("Category", "Foundation")]
     [InlineData("C:/lab/../user")]
     [InlineData("C:/lab/file:stream")]
     [InlineData("C:/lab/name.")]
@@ -17,6 +18,7 @@ public class ExperimentSandboxTests
         Assert.Equal(3, Assert.Throws<ExperimentRefusedException>(() => ExperimentSandbox.Normalize(path)).ExitCode);
 
     [Fact]
+    [Trait("Category", "Foundation")]
     public void BudgetCannotExhaustVolumeOrGrowOnSystemDrive()
     {
         Assert.Throws<ExperimentRefusedException>(() => ExperimentSandbox.CheckCapacity(1024, ExperimentSandbox.DefaultReserve, 4096, "NTFS", false));
@@ -26,6 +28,7 @@ public class ExperimentSandboxTests
     }
 
     [Fact]
+    [Trait("Category", "Foundation")]
     public void ExistingUnownedDirectoryIsNotAdopted()
     {
         var root = Path.Combine(Path.GetTempPath(), "cclean-unowned-" + Guid.NewGuid().ToString("N"));
@@ -54,6 +57,7 @@ public class ExperimentSandboxTests
     }
 
     [Fact]
+    [Trait("Category", "Foundation")]
     public void OwnedRunsAreUniqueAndFixturesCannotEscapeOrExceedBudget()
     {
         var root = Path.Combine(Path.GetTempPath(), "cclean-owned-" + Guid.NewGuid().ToString("N"));
