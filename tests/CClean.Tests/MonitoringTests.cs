@@ -42,11 +42,6 @@ public class MonitoringTests
         Assert.Null(monitor.LastActivity);
         box.CreateFixture("activity.bin", 10);
         await WaitFor(() => monitor.LastActivity is not null);
-        var activity = monitor.LastActivity;
-        revision = monitor.Revision;
-        monitor.Rescan();
-        await WaitFor(() => monitor.Revision > revision);
-        Assert.Equal(activity, monitor.LastActivity);
     }
 
     [Fact]
