@@ -13,7 +13,7 @@ public static class RuntimeBudget
     public const long LogLimit = 50L * 1024 * 1024;
     public const long TemporaryLimit = 20L * 1024 * 1024;
     public const long TotalLimit = 400L * 1024 * 1024;
-    public const long EmergencyFreeBytes = 1024L * 1024 * 1024;
+    public const long EmergencyFreeBytes = 2L * 1024 * 1024 * 1024;
 
     public static RuntimeUsage Measure(string root)
     {
@@ -30,14 +30,14 @@ public static class RuntimeBudget
         return new(database, logs, temporary);
     }
 
-    public static BudgetDecision Evaluate(RuntimeUsage usage, long userFreeBytes, bool auditWritable, long nextBatchBytes = 0)
+    public static BudgetDecision Evaluate(RuntimeUsage usage, long userFreeBytes, bool auditWritable, long nextBatchBytes = 0, long totalVolumeBytes = 0)
     {
         if (usage.DatabaseBytes < 0 || usage.LogBytes < 0 || usage.TemporaryBytes < 0 || nextBatchBytes < 0)
             throw new ArgumentOutOfRangeException(nameof(usage));
-        var pressured = nextBatchBytes >= DatabaseLimit * 9 / 10 - usage.DatabaseBytes ||
-            usage.LogBytes >= LogLimit * 9 / 10 || usage.TemporaryBytes >= TemporaryLimit * 9 / 10 ||
-            nextBatchBytes >= TotalLimit * 9 / 10 - usage.TotalBytes;
-        var low = userFreeBytes < EmergencyFreeBytes;
+        var pressured = nextBatchBytes >= DatabaseLimit * 8 / 10 - usage.DatabaseBytes ||
+            usage.LogBytes >= LogLimit * 8 / 10 || usage.TemporaryBytes >= TemporaryLimit * 8 / 10 ||
+            nextBatchBytes >= TotalLimit * 8 / 10 - usage.TotalBytes;
+        var low = userFreeBytes <= EmergencyFreeBytes || (totalVolumeBytes > 0 && userFreeBytes <= totalVolumeBytes / 100);
         return new(!pressured && !low, auditWritable && !pressured && !low,
             !pressured && !low, !auditWritable ? "Audit unavailable" : low ? "Low free space" : pressured ? "Runtime budget reached" : "Normal");
     }

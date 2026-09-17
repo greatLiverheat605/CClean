@@ -5,6 +5,7 @@ using CClean.Core.Storage;
 
 namespace CClean.Tests;
 
+[Trait("Category", "MvpP0")]
 [Trait("Category", "FileMetadata")]
 [Trait("Category", "M0")]
 public class FileMetadataTests

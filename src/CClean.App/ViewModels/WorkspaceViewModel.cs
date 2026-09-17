@@ -1,0 +1,201 @@
+using System.Collections.ObjectModel;
+using System.IO;
+using CClean.Core.Monitoring;
+using CClean.Core.Projects;
+using CClean.Core.Files;
+using CClean.Core.Storage;
+
+namespace CClean.App.ViewModels;
+
+public sealed class WorkspaceViewModel : IDisposable
+{
+    private readonly System.Windows.Threading.DispatcherTimer statusTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private readonly Dictionary<Guid, string> errors = [];
+    private bool disposed;
+    private bool saving;
+    private bool collectionStopped;
+    private DateTimeOffset nextCalibration = DateTimeOffset.UtcNow.AddSeconds(30);
+    private int calibrationIndex;
+    private readonly Dictionary<Guid, long> revisions = [];
+    private readonly Dictionary<Guid, long> recordedGaps = [];
+    private readonly Dictionary<Guid, Dictionary<string, FileSnapshot>> previous = [];
+    public LocalStore Store { get; }
+    public Core.Sessions.SessionRegistry Sessions { get; }
+    public Core.Cleanup.RuleCatalog Rules { get; }
+    private Core.Cleanup.CleanupJournal? cleanupJournal;
+    private Core.Cleanup.CleanupExecutor? cleanupExecutor;
+    private CancellationTokenSource? cleanupCancellation;
+    public Task<Core.Cleanup.CleanupResult>? CleanupTask { get; private set; }
+    public bool CleanupRunning => CleanupTask is { IsCompleted: false };
+    public Core.Cleanup.CleanupJournal OpenCleanupJournal() => cleanupJournal ??= new(DataDirectory);
+    public Task<Core.Cleanup.CleanupResult> ExecuteCleanup(Core.Cleanup.CleanupPlan plan)
+    {
+        if (CleanupRunning) throw new InvalidOperationException("已有清理任务执行中。");
+        cleanupExecutor ??= new(OpenCleanupJournal()); cleanupCancellation?.Dispose(); cleanupCancellation = new();
+        return CleanupTask = cleanupExecutor.ExecuteApproved(plan, CleanupContext, cleanupCancellation.Token);
+    }
+    public void CancelCleanup() => cleanupCancellation?.Cancel();
+    public event Action? Indexed;
+    public string DataDirectory { get; } = Environment.GetEnvironmentVariable("CCLEAN_DATA_DIR") ??
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CClean");
+    public ProjectRegistry Registry { get; }
+    public ObservableCollection<RegisteredProject> Projects { get; } = [];
+    public Dictionary<Guid, DirectoryMonitor> Monitors { get; } = [];
+    public string Status { get; private set; } = "尚未登记目录。";
+    public event Action? Changed;
+    public WorkspaceViewModel()
+    {
+        Registry = new(DataDirectory);
+        Rules = new(DataDirectory);
+        Store = new(DataDirectory);
+        try { Sessions = new(DataDirectory); } catch { Store.Dispose(); throw; }
+        foreach (var project in Registry.Projects) Projects.Add(project);
+        statusTimer.Tick += async (_, _) =>
+        {
+            if (Projects.Count == 0 || collectionStopped || disposed) return;
+            if (Monitors.Count > 0 && DateTimeOffset.UtcNow >= nextCalibration)
+            {
+                var collectors = Monitors.Values.ToArray();
+                collectors[calibrationIndex++ % collectors.Length].Rescan();
+                nextCalibration = DateTimeOffset.UtcNow.AddMinutes(15d / collectors.Length);
+            }
+            var ready = Monitors.Values.Count(m => m.Revision > 0);
+            var gaps = Monitors.Values.Sum(m => m.NativeGaps + m.ApplicationGaps + m.ScanGaps);
+            var measured = ready == 0 ? "尚未取得当前文件数据" : $"已知 {Monitors.Values.Sum(m => m.Snapshot.Files.Count)} 个文件";
+            Status = $"已覆盖 {ready}/{Projects.Count} 个登记根；{measured}；缺口提示 {gaps}；暂停 {Projects.Count(p => p.Paused)}。仅代表登记范围。";
+            if (errors.Count > 0) Status += " 不可访问：" + errors.Values.First();
+            Changed?.Invoke();
+            if (saving || disposed) return;
+            saving = true;
+            try
+            {
+                foreach (var entry in Monitors.ToArray())
+                {
+                    var revision = entry.Value.Revision;
+                    if (revision == 0 || revisions.GetValueOrDefault(entry.Key) == revision) continue;
+                    var snapshot = entry.Value.Snapshot;
+                    var gapsToRecord = entry.Value.NativeGaps + entry.Value.ApplicationGaps + entry.Value.ScanGaps;
+                    var saved = await Task.Run(() =>
+                    {
+                        if (gapsToRecord != recordedGaps.GetValueOrDefault(entry.Key))
+                        {
+                            Store.RecordGap(entry.Key.ToString(), $"原生/队列/扫描累计缺口 {gapsToRecord}；补扫只恢复当前状态。", snapshot.CapturedAt);
+                            recordedGaps[entry.Key] = gapsToRecord;
+                        }
+                        if (!previous.TryGetValue(entry.Key, out var old)) previous[entry.Key] = old = Store.LoadSnapshots(entry.Key.ToString());
+                        var success = Store.SaveSnapshot(entry.Key.ToString(), snapshot, old);
+                        if (success && snapshot.Gaps.Count == 0) previous[entry.Key] = snapshot.Files.Values.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
+                        else previous[entry.Key] = Store.LoadSnapshots(entry.Key.ToString());
+                        return success;
+                    });
+                    if (disposed) break;
+                    if (saved)
+                    {
+                        if (Monitors.TryGetValue(entry.Key, out var current) && ReferenceEquals(current, entry.Value)) revisions[entry.Key] = revision;
+                        Indexed?.Invoke();
+                    }
+                    else
+                    {
+                        collectionStopped = true;
+                        Status = "空间或自身预算不足，已停止扩展监测和历史落盘；已有索引仍可查看。";
+                        foreach (var monitor in Monitors.Values) await Task.Run(monitor.Dispose);
+                        Monitors.Clear(); Changed?.Invoke(); break;
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                if (!disposed)
+                {
+                    collectionStopped = true;
+                    Status = "索引不可写，已停止采集：" + error.Message;
+                    foreach (var monitor in Monitors.Values.ToArray()) await Task.Run(monitor.Dispose);
+                    Monitors.Clear(); Changed?.Invoke();
+                }
+            }
+            finally { saving = false; }
+        };
+        statusTimer.Start();
+    }
+
+    public async Task Resume()
+    {
+        foreach (var project in Projects.Where(p => !p.Paused).ToArray()) await Start(project);
+    }
+    public Core.Sessions.ActivitySnapshot Activity()
+    {
+        bool Known(string root) => Projects.Any(p =>
+            (root.Equals(p.Root, StringComparison.OrdinalIgnoreCase) || root.StartsWith(p.Root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) &&
+            Monitors.TryGetValue(p.Id, out var m) && m.Revision > 0 && m.Snapshot.Gaps.Count == 0 && m.NativeGaps + m.ApplicationGaps == 0);
+        var snapshot = Sessions.Activity(Projects, Known);
+        var scopes = snapshot.Scopes.Select(s => Projects.Any(p => ProjectRegistry.Overlaps(p.Root, s.Root) &&
+            Monitors.TryGetValue(p.Id, out var m) && m.LastActivity > DateTimeOffset.UtcNow.AddMinutes(-30))
+                ? s with { Active = true, Reason = "近期目录发生变化，保持活动保护" } : s).ToArray();
+        return snapshot with { Scopes = scopes };
+    }
+    public async Task<Core.Cleanup.CleanupContext> CleanupContext()
+    {
+        var rules = Rules.Scopes; var version = Rules.ConfigurationVersion; var activity = Activity();
+        var consumers = await Task.Run(() => Core.Cleanup.CleanupConsumers.Observe(rules));
+        // Process absence cannot replace registration/monitor coverage.
+        var observed = rules.Select(r => new Core.Sessions.ActivityScope(r.Root, false,
+            activity.Scopes.Any(s => Core.Cleanup.ProtectionPolicy.Contains(s.Root, r.Root) && s.ObservationKnown), "登记范围覆盖检查"));
+        return new(version, rules, activity with { Scopes = activity.Scopes.Concat(consumers).Concat(observed).ToArray() }, [DataDirectory]);
+    }
+    public async Task EnforceBudget()
+    {
+        if (disposed || collectionStopped) return;
+        try
+        {
+            var decision = await Task.Run(() =>
+            {
+                var space = VolumeSpaceReader.Read(DataDirectory);
+                return RuntimeBudget.Evaluate(RuntimeBudget.Measure(DataDirectory), (long)space.UserAvailableBytes, true, 0, (long)space.TotalBytes);
+            });
+            if (disposed || decision.Collect) return;
+            collectionStopped = true;
+            foreach (var entry in Monitors.ToArray())
+                if (Monitors.Remove(entry.Key)) await Task.Run(entry.Value.Dispose);
+            Status = "空间或自身预算不足，采集已暂停；已有索引可能过期，容量查询仍可用。";
+            Changed?.Invoke();
+        }
+        catch (Exception error) { if (!disposed) { Status = "预算状态无法读取：" + error.Message; Changed?.Invoke(); } }
+    }
+    private async Task Start(RegisteredProject project)
+    {
+        if (collectionStopped || disposed || Monitors.ContainsKey(project.Id)) return;
+        try
+        {
+            var monitor = await Task.Run(() =>
+            {
+                Store.RecordGap(project.Id.ToString(), "开始或恢复观察；此前的离线区间没有完整历史。");
+                return new DirectoryMonitor(project.Root);
+            });
+            if (disposed) { monitor.Dispose(); return; }
+            Monitors.Add(project.Id, monitor);
+            revisions.Remove(project.Id);
+            errors.Remove(project.Id);
+            Status = "正在建立基线；历史仅从本次观察开始。";
+        }
+        catch (Exception error) { Status = project.Name + "：" + error.Message; errors[project.Id] = Status; }
+        Changed?.Invoke();
+    }
+    public async Task Register(string name, string root, string tool)
+    {
+        var project = await Task.Run(() => Registry.Register(name, root, tool));
+        Projects.Add(project);
+        await Start(project);
+    }
+    public async Task TogglePause(RegisteredProject project)
+    {
+        Registry.SetPaused(project.Id, !project.Paused);
+        var index = Projects.IndexOf(project);
+        Projects[index] = project with { Paused = !project.Paused };
+        if (Monitors.Remove(project.Id, out var monitor)) await Task.Run(monitor.Dispose);
+        else await Start(Projects[index]);
+        await Task.Run(() => Store.RecordGap(project.Id.ToString(), !project.Paused ? "用户暂停观察，后续区间不可见。" : "恢复观察，正在校准当前状态。"));
+        Status = !project.Paused ? "已暂停；暂停区间是历史缺口。" : "已恢复；正在重新校准当前状态。";
+        Changed?.Invoke();
+    }
+    public void Dispose() { disposed = true; statusTimer.Stop(); foreach (var monitor in Monitors.Values) monitor.Dispose(); Store.Dispose(); Sessions.Dispose(); cleanupJournal?.Dispose(); cleanupCancellation?.Dispose(); }
+}

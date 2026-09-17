@@ -40,7 +40,7 @@ public static class DirectoryScanner
                         continue;
                     }
                     if (files.Count >= maxFiles) throw new IOException("Snapshot file limit exceeded.");
-                    var file = WindowsFileMetadata.Read(entry);
+                    var file = WindowsFileMetadata.Read(entry, lease);
                     files.Add(Path.GetRelativePath(root, entry), file);
                     if (file.Identity is null && gaps.Count < 1000) gaps.Add("Metadata unavailable");
                 }

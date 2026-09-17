@@ -15,3 +15,5 @@ dotnet run --project tools/CClean.Poc -c Release -- --case storage-budget --sand
 注入测试验证低空间关闭采集、删除与 VACUUM；真实限额卷写入失败返回 Win32 112（磁盘满），随后审计 INSERT 返回 SQLITE_FULL 13，删除准入关闭。宿主保留量始终满足。注入与真实 I/O 在 JSON 中分别标注。
 
 结果：`20260917T085546979-568056e4b811419bb0d4c91f5ef278a7`，3 passed / 0 failed / 0 skipped；RuntimeBudget 回归 1 项通过。G4 的预算与错误处理部分通过；完整 UI CPU、内存、100,000 文件性能仍待 DEV-019。
+
+DEV-010 更新：产品守卫已与架构约定对齐为 80% 开始降级；紧急阈值为可用量不高于 2 GiB 或卷总量的 1%。新增边界回归已通过，每次索引批次重新采样空间。上面的 90% 实测数据仍代表当时版本，没有据此声称新版阈值经过相同 VHDX 全流程验证。

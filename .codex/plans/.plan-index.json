@@ -4,7 +4,7 @@
   "activePlan": "current/2026-09-17_cclean-development.md",
   "taskBoard": "current/2026-09-17_cclean-development.tasks.json",
   "status": "in_progress",
-  "nextTaskId": "DEV-008",
+  "nextTaskId": "DEV-019",
   "requiredTaskCount": 20,
   "optionalTaskCount": 2,
   "mcpSyncStatus": "pending_unavailable",

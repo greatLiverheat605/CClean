@@ -8,7 +8,7 @@ namespace CClean.Poc;
 
 internal static class CacheProbe
 {
-    public static void Run(ExperimentSandbox box, List<object> checks)
+    public static void Run(ExperimentSandbox box, List<object> checks, bool productExecutor = false)
     {
         var node = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "node.exe");
         var npm = Path.Combine(Path.GetDirectoryName(node)!, "node_modules", "npm", "bin", "npm-cli.js");
@@ -38,6 +38,8 @@ internal static class CacheProbe
         if (version != CacheRule.NpmContent.SupportedVersion) throw new ExperimentRefusedException("npm version is not validated.", 2);
         Npm("cache", "add", "is-number@7.0.0");
         var content = Path.Combine(cache, CacheRule.NpmContent.RelativeRoot);
+        if (productExecutor)
+            foreach (var path in Directory.GetFiles(content, "*", SearchOption.AllDirectories)) File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddHours(-1));
         var approved = Directory.GetFiles(content, "*", SearchOption.AllDirectories).Select(WindowsFileMetadata.Read).ToArray();
         if (approved.Length == 0) throw new InvalidOperationException("Real npm did not generate content.");
         // This unique cache is owned by the completed probe process; it has never been configured for another consumer.
@@ -46,7 +48,18 @@ internal static class CacheProbe
             .ToDictionary(f => f.Path, f => SHA256.HashData(File.ReadAllBytes(f.Path)));
         var newFile = Path.Combine(content, "new-unapproved.bin");
         File.WriteAllText(newFile, "must survive preview", System.Text.Encoding.UTF8);
-        foreach (var file in approved)
+        if (productExecutor)
+        {
+            var data = Path.Combine(box.RunDirectory, "audit"); Directory.CreateDirectory(data);
+            var productContext = new CleanupContext(1, [new(cache, CacheRule.NpmContent.Id, 1, version, true, true)],
+                new(1, [new(cache, false, true, "唯一实验缓存；唯一启动的 npm 进程已退出")]), [data]);
+            var plan = CleanupPlanner.Preview(approved.Select(f => f.Path), productContext);
+            if (plan.EligibleCount != approved.Length) throw new InvalidOperationException("Product policy excluded controlled fixture.");
+            using var journal = new CleanupJournal(data);
+            var result = new CleanupExecutor(journal).ExecuteApproved(plan, () => Task.FromResult(productContext)).GetAwaiter().GetResult();
+            if (result.Deleted != approved.Length || result.State != "Completed") throw new InvalidOperationException(result.Message);
+        }
+        else foreach (var file in approved)
         {
             var excluded = CacheRule.NpmContent.Exclude(context, file);
             if (excluded is not null) throw new InvalidOperationException(excluded);
@@ -63,6 +76,6 @@ internal static class CacheProbe
             throw new InvalidOperationException("Real npm consumer install failed.");
         checks.Add(new { name = "external-exclusive-cache", status = "passed", tool = "npm", version,
             generatedDeletedAndRebuilt = approved.Length, newObjectsPreserved = 1, realConsumerInstall = true,
-            prerequisite = CacheRule.NpmContent.Prerequisite });
+            productExecutor, retention = productExecutor ? "Modified times aged synthetically; actual one-hour waiting not tested" : "PoC rule", prerequisite = CacheRule.NpmContent.Prerequisite });
     }
 }

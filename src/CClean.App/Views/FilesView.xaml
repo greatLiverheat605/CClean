@@ -1,0 +1,23 @@
+<UserControl x:Class="CClean.App.Views.FilesView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel><DockPanel><Button DockPanel.Dock="Right" Content="搜索 / 刷新" Click="Search"/><TextBox x:Name="SearchPath" AutomationProperties.Name="搜索路径" ToolTip="按完整路径搜索" Margin="0,0,12,8"/></DockPanel>
+   <WrapPanel><StackPanel Margin="0,0,12,8"><TextBlock Text="项目"/><ComboBox x:Name="ProjectFilter" Width="180" MinHeight="36" AutomationProperties.Name="文件项目"/></StackPanel>
+    <StackPanel Margin="0,0,12,8"><TextBlock Text="排序"/><ComboBox x:Name="Sort" SelectedIndex="0" Width="160" MinHeight="36" AutomationProperties.Name="文件排序"><ComboBoxItem Content="分配估算降序"/><ComboBoxItem Content="净增长降序"/><ComboBoxItem Content="最近修改优先"/></ComboBox></StackPanel>
+    <StackPanel Margin="0,0,12,8"><TextBlock Text="对象分类"/><ComboBox x:Name="Classification" SelectedIndex="0" Width="160" MinHeight="36" AutomationProperties.Name="对象分类"><ComboBoxItem Content="全部对象"/><ComboBoxItem Content="普通文件（待规则复核）"/><ComboBoxItem Content="特殊或未知对象"/></ComboBox></StackPanel>
+   </WrapPanel>
+  </StackPanel>
+  <TextBlock Grid.Row="1" x:Name="Feedback" Text="索引会保留未知与过期状态；每页最多 200 项。" Margin="0,4,0,12"/>
+  <DataGrid Grid.Row="2" x:Name="Files" SelectionMode="Extended" SelectionChanged="Selected">
+   <DataGrid.Columns><DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="*"/>
+    <DataGridTextColumn Header="逻辑大小" Binding="{Binding LogicalDisplay}" Width="110"/>
+    <DataGridTextColumn Header="分配估算" Binding="{Binding AllocationDisplay}" Width="110"/>
+    <DataGridTextColumn Header="相对初始量" Binding="{Binding GrowthDisplay}" Width="110"/>
+    <DataGridTextColumn Header="保护 / 特殊对象" Binding="{Binding Exclusion}" Width="160"/></DataGrid.Columns>
+  </DataGrid>
+  <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBox x:Name="FullPath" IsReadOnly="True" TextWrapping="Wrap" AutomationProperties.Name="完整选中路径" Margin="0,0,0,10"/>
+   <WrapPanel><Button Content="上一页" Click="Previous"/><Button Content="下一页" Click="Next"/>
+    <Button Content="复制选中路径" Click="Copy"/><Button x:Name="PreviewButton" Content="预览选中文件" Click="Preview"/></WrapPanel>
+  </StackPanel>
+ </Grid>
+</UserControl>

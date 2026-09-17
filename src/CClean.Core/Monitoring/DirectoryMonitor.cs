@@ -12,6 +12,9 @@ public sealed class DirectoryMonitor : IDisposable
     private readonly object sync = new();
     private DirectorySnapshot snapshot = new(new Dictionary<string, Files.FileSnapshot>(), ["Initial scan pending"], DateTimeOffset.MinValue);
     private long applicationGaps, nativeGaps, scanGaps, revision;
+    private int disposed;
+    private long lastActivityTicks;
+    public DateTimeOffset? LastActivity => Interlocked.Read(ref lastActivityTicks) is var ticks && ticks != 0 ? new DateTimeOffset(ticks, TimeSpan.Zero) : null;
     public long ApplicationGaps => Interlocked.Read(ref applicationGaps);
     public long NativeGaps => Interlocked.Read(ref nativeGaps);
     public long ScanGaps => Interlocked.Read(ref scanGaps);
@@ -22,6 +25,7 @@ public sealed class DirectoryMonitor : IDisposable
     public DirectoryMonitor(string root, int queueCapacity = 128, Action? beforeNotification = null)
     {
         this.root = Path.GetFullPath(root);
+        using var boundary = new Experiments.DirectoryLease(this.root);
         if (queueCapacity <= 0) throw new ArgumentOutOfRangeException(nameof(queueCapacity));
         hints = Channel.CreateBounded<bool>(new BoundedChannelOptions(queueCapacity) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true });
         watcher = new FileSystemWatcher(this.root)
@@ -29,7 +33,7 @@ public sealed class DirectoryMonitor : IDisposable
             IncludeSubdirectories = true, InternalBufferSize = 4096,
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite
         };
-        void Changed(object sender, FileSystemEventArgs args) { beforeNotification?.Invoke(); Hint(); }
+        void Changed(object sender, FileSystemEventArgs args) { Interlocked.Exchange(ref lastActivityTicks, DateTimeOffset.UtcNow.Ticks); beforeNotification?.Invoke(); Hint(); }
         watcher.Created += Changed;
         watcher.Changed += Changed;
         watcher.Deleted += Changed;
@@ -71,6 +75,7 @@ public sealed class DirectoryMonitor : IDisposable
     public void Rescan() => Hint();
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref disposed, 1) != 0) return;
         watcher.Dispose();
         stop.Cancel();
         worker.GetAwaiter().GetResult();

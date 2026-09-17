@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CClean.App"
         mc:Ignorable="d"
-        Title="CClean · 开发空间工作台" Height="820" Width="1240" MinHeight="720" MinWidth="1024"
+        Title="CClean · 开发空间工作台" Height="820" Width="1240" MinHeight="500" MinWidth="760"
         Loaded="OnLoaded" Closed="OnClosed" Style="{StaticResource {x:Type Window}}">
     <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="208"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -41,7 +41,11 @@
             <Border Grid.Row="1" Background="{DynamicResource Panel}" Padding="16,12" Margin="0,0,0,20" CornerRadius="6">
                 <TextBlock x:Name="Status" Text="尚未登记目录。登记后才会在确认范围内监测。" AutomationProperties.LiveSetting="Polite"/>
             </Border>
-            <ContentControl Grid.Row="2" x:Name="PageContent"/>
+            <ScrollViewer Grid.Row="2" x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Focusable="False">
+                <Grid MinHeight="480" MinWidth="640" Height="{Binding ViewportHeight, ElementName=PageScroll}" Width="{Binding ViewportWidth, ElementName=PageScroll}">
+                    <ContentControl x:Name="PageContent"/>
+                </Grid>
+            </ScrollViewer>
             <TextBlock Grid.Row="3" Text="文件占用、目录净增长与系统可用量分别计量。归因依据不代表删除授权。"
                        Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,18,0,0"/>
         </Grid>

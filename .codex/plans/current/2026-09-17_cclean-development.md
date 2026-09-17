@@ -7,10 +7,10 @@
 - 状态：**执行中；用户已通过 do-plan 授权实施**。
 - 来源基线：`44cd8c4`；规划前工作区干净，`main` 与 `origin/main` 一致。
 - 复杂度：高；22 个任务，其中 P0 必做 20 个，P1 可选增强 2 个。
-- 当前下一项：**DEV-008：WPF 只读应用底座**。
+- 当前下一项：**DEV-019：整体验收与 DEV-020 测试包准备；DEV-013 待完整 DPI/更新延迟验收**。
 - 本地任务表：[2026-09-17_cclean-development.tasks.json](2026-09-17_cclean-development.tasks.json)。
 - MCP 同步：**未同步**。当前工具目录没有任务管理与全局经验检索接口，远端任务 ID 均为空；本地清单已准备，不把文件保存或 GitHub 提交当作 MCP 同步。
-- 当前文件变更范围：仅 `.codex/plans/` 内的计划、任务表和索引；本轮没有实施源代码、安装 SDK 或运行清理。
+- 当前文件变更范围：已进入实施，包含源代码、测试、探针和研究记录；完成情况以各步骤实测记录为准。
 
 ## 任务目标与背景
 
@@ -226,7 +226,7 @@ flowchart TD
 
 ### DEV-008 · M1 · 建立 WPF 外壳、项目配置和 Windows CI
 
-- **状态**：执行中（P0；子计划 sub-008-app）。
+- **状态**：已完成 ✓（P0；via sub-008-app；受限权限桌面与 Windows CI 通过）。
 - **依赖**：`DEV-007`；附加门槛 G1:passed、MetadataBaseline:passed、G4Budget:passed。
 - **涉及文件**：`src/CClean.App/CClean.App.csproj`（拟新增）；`src/CClean.App/App.xaml`（拟新增）；`src/CClean.App/MainWindow.xaml`（拟新增）；`.github/workflows/ci.yml`（拟新增）。
 - **目标与操作**：
@@ -244,7 +244,7 @@ flowchart TD
 
 ### DEV-009 · M1 · 集成目录发现、持续监测和覆盖状态
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-009-discovery；发现/登记/暂停/重启/恢复桌面流程通过）。
 - **依赖**：`DEV-008`。
 - **涉及文件**：`src/CClean.Core/Projects/ProjectRegistry.cs`（拟新增）；`src/CClean.Core/Monitoring/DirectoryDiscovery.cs`（拟新增）；`src/CClean.App/Views/ProjectSetupView.xaml`（拟新增）；`tests/CClean.Tests/DiscoveryTests.cs`（拟新增）。
 - **目标与操作**：
@@ -260,7 +260,7 @@ flowchart TD
 
 ### DEV-010 · M1 · 落地索引、容量总览和自身资源守卫
 
-- **状态**：待执行（P0）。
+- **状态**：已完成（P0；证据 docs/research/index-storage.md；最终性能待 DEV-019）。
 - **依赖**：`DEV-008`、`DEV-009`。
 - **涉及文件**：`src/CClean.Core/Storage/LocalStore.cs`（拟新增）；`src/CClean.App/Views/OverviewView.xaml`（拟新增）；`src/CClean.App/Views/FilesView.xaml`（拟新增）；`tests/CClean.Tests/LocalStoreTests.cs`（拟新增）。
 - **目标与操作**：
@@ -276,7 +276,7 @@ flowchart TD
 
 ### DEV-011 · M2 · 实现会话、工具基础适配与活动保护
 
-- **状态**：待执行（P0）。
+- **状态**：已完成（P0；证据 docs/research/sessions.md）。
 - **依赖**：`DEV-010`。
 - **涉及文件**：`src/CClean.Core/Sessions/SessionRegistry.cs`（拟新增）；`src/CClean.Core/Tools/ToolCatalog.cs`（拟新增）；`src/CClean.App/Views/SessionsView.xaml`（拟新增）；`tests/CClean.Tests/SessionTests.cs`（拟新增）。
 - **目标与操作**：
@@ -292,7 +292,7 @@ flowchart TD
 
 ### DEV-012 · M2 · 实现证据分类、共享去重和时间聚合查询
 
-- **状态**：待执行（P0）。
+- **状态**：已完成（P0；证据 docs/research/attribution.md）。
 - **依赖**：`DEV-011`。
 - **涉及文件**：`src/CClean.Core/Attribution/AttributionRules.cs`（拟新增）；`src/CClean.Core/History/TimelineQuery.cs`（拟新增）；`tests/CClean.Tests/AttributionTests.cs`（拟新增）。
 - **目标与操作**：
@@ -308,7 +308,7 @@ flowchart TD
 
 ### DEV-013 · M2 · 完成分支时间线、详情和空间筛选
 
-- **状态**：待执行（P0）。
+- **状态**：待完整验收（P0；子计划 sub-013-timeline；键盘/主题/导航及离屏缩放已实测，系统 DPI 与端到端 P95 未验证）。
 - **依赖**：`DEV-012`。
 - **涉及文件**：`src/CClean.App/Views/TimelineView.xaml`（拟新增）；`src/CClean.App/Controls/TimelineCanvas.cs`（拟新增）；`src/CClean.App/ViewModels/TimelineViewModel.cs`（拟新增）；`tests/CClean.Tests/TimelineQueryTests.cs`（拟新增）。
 - **目标与操作**：
@@ -325,7 +325,7 @@ flowchart TD
 
 ### DEV-014 · M3 · 实现版本化规则和所有入口的保护分类
 
-- **状态**：待执行（P0）。
+- **状态**：已完成（P0；子计划 sub-014-protection；Protection/Storage 4 项通过）。
 - **依赖**：`DEV-010`、`DEV-011`、`DEV-002`。
 - **涉及文件**：`src/CClean.Core/Cleanup/ProtectionPolicy.cs`（拟新增）；`src/CClean.Core/Cleanup/RuleCatalog.cs`（拟新增）；`tests/CClean.Tests/ProtectionPolicyTests.cs`（拟新增）。
 - **目标与操作**：
@@ -341,7 +341,7 @@ flowchart TD
 
 ### DEV-015 · M3 · 生成一次性清理清单与 dry-run 界面
 
-- **状态**：待执行（P0）。
+- **状态**：已完成（P0；子计划 sub-015-preview；实际全选 7 项全部受保护，测试通过）。
 - **依赖**：`DEV-014`、`DEV-002`。
 - **涉及文件**：`src/CClean.Core/Cleanup/CleanupPlanner.cs`（拟新增）；`src/CClean.App/Views/CleanupPreviewView.xaml`（拟新增）；`tests/CClean.Tests/CleanupPlanTests.cs`（拟新增）。
 - **目标与操作**：
@@ -357,7 +357,7 @@ flowchart TD
 
 ### DEV-016 · M4 · 集成受控执行器与可持久化审计
 
-- **状态**：待执行（P0）。
+- **状态**：已完成（P0；执行与安全回归通过，见 cleanup-execution.md）。
 - **依赖**：`DEV-004`、`DEV-005`、`DEV-007`、`DEV-015`；附加门槛 G2:passed、G3:passed。
 - **涉及文件**：`src/CClean.Core/Cleanup/CleanupExecutor.cs`（拟新增）；`src/CClean.Core/Cleanup/CleanupJournal.cs`（拟新增）；`tests/CClean.Tests/CleanupExecutionTests.cs`（拟新增）。
 - **目标与操作**：
@@ -373,7 +373,7 @@ flowchart TD
 
 ### DEV-017 · M4 · 完成手动与一键清理的用户闭环
 
-- **状态**：待执行（P0）。
+- **状态**：实现完成，待完整验收（P0）。
 - **依赖**：`DEV-013`、`DEV-016`。
 - **涉及文件**：`src/CClean.App/Views/CleanupView.xaml`（拟新增）；`src/CClean.App/Views/CleanupHistoryView.xaml`（拟新增）；`tests/CClean.Tests/CleanupWorkflowTests.cs`（拟新增）。
 - **目标与操作**：
@@ -389,7 +389,7 @@ flowchart TD
 
 ### DEV-018 · M4 · 完成故障恢复、取消和清理对抗验收
 
-- **状态**：待执行（P0）。
+- **状态**：故障测试已执行，待完整验收（P0）。
 - **依赖**：`DEV-016`、`DEV-017`。
 - **涉及文件**：`src/CClean.Core/Cleanup/CleanupRecovery.cs`（拟新增）；`tests/CClean.Tests/CleanupRecoveryTests.cs`（拟新增）；`docs/testing/cleanup-acceptance.md`（拟新增）。
 - **目标与操作**：
@@ -405,7 +405,7 @@ flowchart TD
 
 ### DEV-019 · M5 · 完成性能、低空间、权限和可访问性验收
 
-- **状态**：待执行（P0）。
+- **状态**：执行中（P0）。
 - **依赖**：`DEV-010`、`DEV-013`、`DEV-018`。
 - **涉及文件**：`tests/CClean.Tests/PerformanceScenarios.cs`（拟新增）；`docs/testing/release-acceptance.md`（拟新增）。
 - **目标与操作**：
@@ -423,7 +423,7 @@ flowchart TD
 
 ### DEV-020 · M5 · 准备 Windows 测试安装包、用户文档和 GitHub 交付
 
-- **状态**：待执行（P0）。
+- **状态**：测试包准备中；发行门槛尚未满足（P0）。
 - **依赖**：`DEV-019`。
 - **涉及文件**：`packaging/CClean.iss`（拟新增）；`docs/user-guide.md`（拟新增）；`docs/privacy.md`（拟新增）；`CHANGELOG.md`（拟新增）；`.github/workflows/release.yml`（拟新增）。
 - **目标与操作**：
@@ -545,3 +545,23 @@ GitHub 同步只提交已审阅的计划/源码和脱敏摘要，不提交 `arti
 
 | 2026-09-17 DEV-006 | WAL 守卫与隔离 VHDX 实际 I/O 失败 | G4Budget 通过；VHDX 已卸载 |
 | 2026-09-17 DEV-007 | M0 证据评审与 22 项测试 | docs/research/m0-decision.md；M1 准入满足 |
+
+| 2026-09-17 DEV-008 | 浅深主题、受限启动、键盘导航、Windows CI | CI 35203175438 通过；Foundation 扩充至 14 项本地通过 |
+
+| 2026-09-17 DEV-009 | 有界发现和持久登记，桌面暂停/重启恢复 | docs/research/discovery.md；2 项 Discovery 测试通过 |
+
+| 2026-09-17 DEV-010 | 索引、预算、桌面总览、100000 文件复扫 26.127 秒及小规模 10 分钟空闲 | docs/research/index-storage.md；大规模新版空闲补测中；MCP 未同步 |
+
+| 2026-09-17 DEV-011 | 三工具手动会话、退出中断、显式恢复及活动快照 | docs/research/sessions.md；2 项 Sessions 测试及桌面合成流程通过 |
+
+| 2026-09-17 DEV-012 | 证据分类、共享去重、历史缺口和有界聚合 | docs/research/attribution.md；4 项 Attribution 测试通过 |
+
+- 2026-09-17：DEV-013 键盘图选点、列表选取、详情到当前文件、浅深主题验证通过；Foundation 25/25。500 节点离屏缩放数据已记录，系统 DPI 与端到端更新 P95 未验证，不标 passed。按既定独立依赖继续 DEV-014；MCP 仍不可用。
+
+- 2026-09-17：DEV-014 保护分类与版本化规则落地，外部默认禁用，Release 构建通过；继续 DEV-015。MCP 未同步。
+
+- 2026-09-17：DEV-015 一次性预览通过，实际界面全选未知对象均排除；G2/G3 已记录通过，开始 DEV-016。MCP 仍未同步。
+
+- 2026-09-17：DEV-016 自检通过；DEV-017 已接确认/结果/审计页且产品执行器真实 npm 6 文件重建通过。DEV-018 三个进程终止点恢复通过、Safety 17/17。为准备可审阅内部产物继续验收与打包，所有缺失前置验收仍保留 pending_validation，禁止据此发行。
+
+- 2026-09-17：最终解决方案 Release 构建零警告/零错误，MvpP0 42/42、真实进程退出恢复 3/3；实际 125%/150% DPI 与小规模端到端 P95 647.34 ms 已记录。DEV-013 仍待 200% DPI；最终大样本空闲复测运行中。DEV-020 仅准备内部未验收包，MCP 不可用。

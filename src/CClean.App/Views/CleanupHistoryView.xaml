@@ -1,0 +1,7 @@
+<UserControl x:Class="CClean.App.Views.CleanupHistoryView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <StackPanel><Button Content="刷新清理记录" Click="Refresh" HorizontalAlignment="Left"/><TextBlock x:Name="Status" Text="最多显示最近 200 次任务。中断任务不自动续删，需重新预览。" Margin="0,0,0,8"/></StackPanel>
+  <DataGrid Grid.Row="1" x:Name="Runs" SelectionChanged="Select" SelectionMode="Single"><DataGrid.Columns><DataGridTextColumn Header="时间" Binding="{Binding Created}" Width="220"/><DataGridTextColumn Header="状态" Binding="{Binding State}" Width="120"/><DataGridTextColumn Header="摘要" Binding="{Binding Summary}" Width="*"/></DataGrid.Columns></DataGrid>
+  <DataGrid Grid.Row="2" x:Name="Events" Margin="0,12,0,0"><DataGrid.Columns><DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="*"/><DataGridTextColumn Header="状态" Binding="{Binding State}" Width="140"/><DataGridTextColumn Header="依据" Binding="{Binding Reason}" Width="320"/></DataGrid.Columns></DataGrid>
+ </Grid>
+</UserControl>

@@ -4,7 +4,7 @@
   "title": "CClean 从 M0 验证到 MVP 交付",
   "createdAt": "2026-09-17T16:08:28+08:00",
   "status": "in_progress",
-  "currentTaskId": "DEV-008",
+  "currentTaskId": "DEV-019",
   "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
   "sourcePlan": "2026-09-17_cclean-development.md",
   "requiredTaskCount": 20,
@@ -43,7 +43,8 @@
     "passed": "任务验收已通过",
     "failed": "已执行但验收未通过",
     "blocked": "前置门槛/环境阻塞",
-    "deferred": "不属于默认 MVP 执行队列"
+    "deferred": "不属于默认 MVP 执行队列",
+    "pending_validation": "实现及部分验证完成，仍有必需验收缺项，不等同 passed"
   },
   "dependencyContract": {
     "all_passed": "所有依赖任务通过，且 requiredGates 全部通过，才可执行",
@@ -427,7 +428,7 @@
       "name": "[CClean][DEV-008] 建立 WPF 外壳、项目配置和 Windows CI",
       "stage": "M1",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-007"
@@ -474,14 +475,15 @@
         "NFR-01"
       ],
       "estimate": "纳入 M1 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/app-foundation.md"
     },
     {
       "id": "DEV-009",
       "name": "[CClean][DEV-009] 集成目录发现、持续监测和覆盖状态",
       "stage": "M1",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-008"
@@ -525,14 +527,15 @@
         "AT-21"
       ],
       "estimate": "纳入 M1 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/discovery.md"
     },
     {
       "id": "DEV-010",
       "name": "[CClean][DEV-010] 落地索引、容量总览和自身资源守卫",
       "stage": "M1",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-008",
@@ -577,14 +580,15 @@
         "AT-13"
       ],
       "estimate": "纳入 M1 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/index-storage.md"
     },
     {
       "id": "DEV-011",
       "name": "[CClean][DEV-011] 实现会话、工具基础适配与活动保护",
       "stage": "M2",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-010"
@@ -628,14 +632,15 @@
         "AT-15"
       ],
       "estimate": "纳入 M2 的 5–7 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/sessions.md"
     },
     {
       "id": "DEV-012",
       "name": "[CClean][DEV-012] 实现证据分类、共享去重和时间聚合查询",
       "stage": "M2",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-011"
@@ -672,14 +677,15 @@
         "AT-04"
       ],
       "estimate": "纳入 M2 的 5–7 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/attribution.md"
     },
     {
       "id": "DEV-013",
       "name": "[CClean][DEV-013] 完成分支时间线、详情和空间筛选",
       "stage": "M2",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-012"
@@ -723,14 +729,15 @@
         "AT-17"
       ],
       "estimate": "纳入 M2 的 5–7 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/timeline.md"
     },
     {
       "id": "DEV-014",
       "name": "[CClean][DEV-014] 实现版本化规则和所有入口的保护分类",
       "stage": "M3",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-010",
@@ -769,14 +776,15 @@
         "AT-20"
       ],
       "estimate": "纳入 M3 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/protection-policy.md"
     },
     {
       "id": "DEV-015",
       "name": "[CClean][DEV-015] 生成一次性清理清单与 dry-run 界面",
       "stage": "M3",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-014",
@@ -815,14 +823,15 @@
         "AT-10"
       ],
       "estimate": "纳入 M3 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/cleanup-preview.md"
     },
     {
       "id": "DEV-016",
       "name": "[CClean][DEV-016] 集成受控执行器与可持久化审计",
       "stage": "M4",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-004",
@@ -869,14 +878,15 @@
         "AT-10"
       ],
       "estimate": "纳入 M4 的 5–8 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/cleanup-execution.md"
     },
     {
       "id": "DEV-017",
       "name": "[CClean][DEV-017] 完成手动与一键清理的用户闭环",
       "stage": "M4",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-013",
@@ -916,14 +926,16 @@
         "AT-15"
       ],
       "estimate": "纳入 M4 的 5–8 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/cleanup-acceptance.md",
+      "validationNote": "功能接线和真实 npm 产品执行器验证完成；完整 UI 正向执行与 DEV-013 200% DPI 待验。"
     },
     {
       "id": "DEV-018",
       "name": "[CClean][DEV-018] 完成故障恢复、取消和清理对抗验收",
       "stage": "M4",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-016",
@@ -962,14 +974,16 @@
         "AT-13"
       ],
       "estimate": "纳入 M4 的 5–8 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/cleanup-acceptance.md",
+      "validationNote": "三阶段子进程崩溃与 Safety 17 项通过；产品真实限额审计失败待验。"
     },
     {
       "id": "DEV-019",
       "name": "[CClean][DEV-019] 完成性能、低空间、权限和可访问性验收",
       "stage": "M5",
       "priority": "P0",
-      "status": "pending",
+      "status": "in_progress",
       "optional": false,
       "dependencies": [
         "DEV-010",
@@ -1009,14 +1023,15 @@
         "NFR-07"
       ],
       "estimate": "纳入 M5 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/release-acceptance.md"
     },
     {
       "id": "DEV-020",
       "name": "[CClean][DEV-020] 准备 Windows 测试安装包、用户文档和 GitHub 交付",
       "stage": "M5",
       "priority": "P0",
-      "status": "pending",
+      "status": "in_progress",
       "optional": false,
       "dependencies": [
         "DEV-019"
@@ -1063,7 +1078,8 @@
         "发行条件"
       ],
       "estimate": "纳入 M5 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/release-acceptance.md"
     },
     {
       "id": "DEV-021",

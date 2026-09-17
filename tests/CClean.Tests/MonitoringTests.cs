@@ -3,11 +3,38 @@ using CClean.Core.Monitoring;
 
 namespace CClean.Tests;
 
+[Trait("Category", "MvpP0")]
 [Trait("Category", "Monitoring")]
 [Trait("Category", "M0")]
 [Trait("Category", "Foundation")]
 public class MonitoringTests
 {
+    [Fact]
+    public async Task CalibrationDoesNotInventFileActivity()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-activity-" + Guid.NewGuid().ToString("N")));
+        using var monitor = new DirectoryMonitor(box.RunDirectory);
+        async Task WaitFor(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(15);
+            while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(25);
+            Assert.True(condition());
+        }
+        await WaitFor(() => monitor.Revision > 0);
+        Assert.Null(monitor.LastActivity);
+        var revision = monitor.Revision;
+        monitor.Rescan();
+        await WaitFor(() => monitor.Revision > revision);
+        Assert.Null(monitor.LastActivity);
+        box.CreateFixture("activity.bin", 10);
+        await WaitFor(() => monitor.LastActivity is not null);
+        var activity = monitor.LastActivity;
+        revision = monitor.Revision;
+        monitor.Rescan();
+        await WaitFor(() => monitor.Revision > revision);
+        Assert.Equal(activity, monitor.LastActivity);
+    }
+
     [Fact]
     public async Task ChangesConvergeAndApplicationOverflowRemainsVisible()
     {

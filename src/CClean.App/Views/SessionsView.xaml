@@ -1,0 +1,24 @@
+<UserControl x:Class="CClean.App.Views.SessionsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid Margin="12">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel>
+   <TextBlock Text="手动会话" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"/>
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions>
+   <StackPanel Margin="0,0,12,0"><TextBlock Text="项目"/><ComboBox x:Name="Project" DisplayMemberPath="Name" MinHeight="40" AutomationProperties.Name="会话项目" Margin="0,4,0,10"/></StackPanel>
+   <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="会话名称"/><TextBox x:Name="Label" MaxLength="120" AutomationProperties.Name="会话名称" Margin="0,4,0,10"/></StackPanel>
+   <StackPanel Grid.Column="2"><TextBlock Text="工具标签"/><ComboBox x:Name="Tool" SelectedIndex="0" MinHeight="40" AutomationProperties.Name="会话工具" Margin="0,4,0,10">
+    <ComboBoxItem Content="Codex"/><ComboBoxItem Content="Claude Code"/><ComboBoxItem Content="ZCode"/>
+   </ComboBox></StackPanel></Grid>
+   <Expander Header="关联依赖目录（可选，每行一个；活动未知时受保护）" Margin="0,0,0,12">
+   <TextBox x:Name="Dependencies" AcceptsReturn="True" Height="65" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="会话依赖目录" Margin="0,4,0,10"/></Expander>
+   <WrapPanel><Button Content="开始手动会话" Click="Begin"/><Button Content="结束选中会话" Click="End"/><Button Content="恢复中断会话" Click="Resume"/></WrapPanel>
+  </StackPanel>
+  <TextBlock Grid.Row="1" x:Name="Feedback" Text="三工具均为 A 级手动绑定，未启用自动进程绑定；不读取聊天内容。" Margin="0,4,0,12"/>
+  <DataGrid Grid.Row="2" x:Name="Sessions" SelectionMode="Single">
+   <DataGrid.Columns><DataGridTextColumn Header="名称" Binding="{Binding Label}" Width="*"/><DataGridTextColumn Header="工具" Binding="{Binding Tool}" Width="110"/>
+    <DataGridTextColumn Header="状态" Binding="{Binding StateLabel}" Width="200"/><DataGridTextColumn Header="开始时间（本地）" Binding="{Binding StartedLocal}" Width="160"/>
+   </DataGrid.Columns>
+  </DataGrid>
+  <TextBlock Grid.Row="3" Text="会话是本工具记录的开发上下文，不等于聊天 ID。退出后未结束的会话会标为中断；恢复会建立新的时间段，不补造离线历史。" Margin="0,12,0,0"/>
+ </Grid>
+</UserControl>

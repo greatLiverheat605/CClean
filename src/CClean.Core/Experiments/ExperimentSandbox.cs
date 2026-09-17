@@ -14,12 +14,15 @@ public sealed class ExperimentRefusedException(string message, int exitCode) : E
 public sealed class DirectoryLease : IDisposable
 {
     private readonly List<SafeFileHandle> handles = [];
+    internal string DirectoryPath { get; }
+    internal bool IsHeld => handles.Count > 0;
 
     public DirectoryLease(string path, bool createMissing = false)
     {
         try
         {
             var full = Path.GetFullPath(path);
+            DirectoryPath = full.TrimEnd(Path.DirectorySeparatorChar);
             var root = Path.GetPathRoot(full)!;
             var current = root;
             Open(current);

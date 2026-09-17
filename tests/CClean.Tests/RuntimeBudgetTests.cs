@@ -2,6 +2,7 @@ using CClean.Core.Storage;
 
 namespace CClean.Tests;
 
+[Trait("Category", "MvpP0")]
 [Trait("Category", "RuntimeBudget")]
 [Trait("Category", "M0")]
 [Trait("Category", "Foundation")]
@@ -19,5 +20,8 @@ public class RuntimeBudgetTests
             Assert.False(RuntimeBudget.Evaluate(usage, long.MaxValue, true).Collect);
         Assert.False(RuntimeBudget.Evaluate(new(0, 0, 0), long.MaxValue, true, long.MaxValue).Collect);
         Assert.True(RuntimeBudget.Evaluate(new(0, 0, 0), long.MaxValue, true, 4096).Collect);
+        Assert.False(RuntimeBudget.Evaluate(new(RuntimeBudget.DatabaseLimit * 8 / 10, 0, 0), long.MaxValue, true).Collect);
+        Assert.True(RuntimeBudget.Evaluate(new(RuntimeBudget.DatabaseLimit * 8 / 10 - 1, 0, 0), long.MaxValue, true).Collect);
+        Assert.False(RuntimeBudget.Evaluate(new(0, 0, 0), 3L * 1024 * 1024 * 1024, true, 0, 400L * 1024 * 1024 * 1024).Collect);
     }
 }

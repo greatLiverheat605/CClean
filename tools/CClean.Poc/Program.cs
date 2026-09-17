@@ -12,7 +12,7 @@ string? caseName = null;
 try
 {
     var options = new Dictionary<string, string>(StringComparer.Ordinal);
-    string[] known = ["--case", "--sandbox", "--output", "--max-fixture-bytes", "--reserve-free-bytes", "--file-count", "--logical-bytes", "--quota-root"];
+    string[] known = ["--case", "--sandbox", "--output", "--max-fixture-bytes", "--reserve-free-bytes", "--file-count", "--logical-bytes", "--quota-root", "--sample-root", "--checkpoint"];
     if (args.Length == 0 || args.Length % 2 != 0) throw new ExperimentRefusedException("Expected --name value pairs.", 2);
     for (var i = 0; i < args.Length; i += 2)
         if (!known.Contains(args[i]) || !options.TryAdd(args[i], args[i + 1]))
@@ -32,7 +32,7 @@ try
         reportDirectory = Path.Combine(Path.GetDirectoryName(output)!, Path.GetFileNameWithoutExtension(output) + "-" + runId);
         Directory.CreateDirectory(reportDirectory);
     }
-    if (caseName is not ("environment" or "metadata" or "watcher" or "watcher-overflow" or "deletion-safety" or "cache-rule" or "storage-budget")) throw new ExperimentRefusedException($"Case not implemented: {caseName}.", 2);
+    if (caseName is not ("environment" or "metadata" or "watcher" or "watcher-overflow" or "deletion-safety" or "cache-rule" or "cache-product" or "cleanup-crashes" or "cleanup-crash-child" or "storage-budget" or "index-scale" or "index-rescan" or "benchmark" or "timeline-fixture")) throw new ExperimentRefusedException($"Case not implemented: {caseName}.", 2);
     var budget = Number("--max-fixture-bytes", ExperimentSandbox.DefaultBudget);
     var reserve = Number("--reserve-free-bytes", ExperimentSandbox.DefaultReserve);
     var count = Number("--file-count", 1);
@@ -49,7 +49,20 @@ try
             throw new ExperimentRefusedException("Sandbox requires artifacts or an explicitly owned lab ancestor.", 3);
     }
     using var sandbox = new ExperimentSandbox(sandboxPath, budget, reserve);
-    if (caseName == "metadata")
+    if (caseName == "cleanup-crash-child") CClean.Poc.RecoveryProbe.Child(sandbox, Required("--sample-root"), Required("--checkpoint"));
+    else if (caseName == "cleanup-crashes") CClean.Poc.RecoveryProbe.Run(sandbox, checks);
+    else if (caseName == "timeline-fixture")
+    {
+        CClean.Poc.TimelineProbe.Run(sandbox, checks);
+    }
+    else if (caseName is "index-scale" or "index-rescan" or "benchmark")
+    {
+        if (caseName == "benchmark" && (count != 100000 || logical != 21474836480 || budget < 25769803776 ||
+            Path.GetPathRoot(sandboxPath)!.Equals(Path.GetPathRoot(Environment.SystemDirectory), StringComparison.OrdinalIgnoreCase)))
+            throw new ExperimentRefusedException("Benchmark requires 100000 files / 20 GiB / explicit 24 GiB budget on a non-system NTFS lab.", 2);
+        CClean.Poc.IndexProbe.Run(sandbox, (int)count, logical, checks, caseName == "index-rescan" ? Required("--sample-root") : null);
+    }
+    else if (caseName == "metadata")
     {
         CClean.Poc.MetadataProbe.Run(sandbox, checks);
     }
@@ -61,9 +74,9 @@ try
     {
         CClean.Poc.DeletionProbe.Run(sandbox, checks);
     }
-    else if (caseName == "cache-rule")
+    else if (caseName is "cache-rule" or "cache-product")
     {
-        CClean.Poc.CacheProbe.Run(sandbox, checks);
+        CClean.Poc.CacheProbe.Run(sandbox, checks, caseName == "cache-product");
     }
     else if (caseName == "storage-budget")
     {
