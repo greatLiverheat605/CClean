@@ -22,3 +22,5 @@ CleanupRecovery + Safety 17/17；最新全量 MvpP0 43/43。公共保护策略�
 待完成：真实 UI 正向点击永久删除（本机多 Node 消费者使保守策略排除全部 npm 根）；产品审计在真实限额卷上的满盘/IO 失败（M0 的 Win32 112/SQLITE_FULL 实测不直接替代产品执行器）；干净环境集成验收。没有终止用户 Node 进程或绕过消费者保护来凑通过。
 
 最终代码回归：新增 SpaceBefore/SpaceAfter 持久空间采样后，三个真实进程退出点再次通过，报告 `artifacts/final-crashes/result-20260917T112501886-d15365a855d14ecaada255eeaa0a95f1/result.json`。42 项 P0 测试均通过，包含初始/手动校准不制造文件活动、真实写入产生活动的回归检查。
+
+独立 4 GiB NTFS 虚拟卷真实满盘后，产品预算守卫在首个删除前停止，候选保留，重启 Interrupted；Win32 112 与独立 SQLite 13 已实测，卷已卸载。此证据不替代产品删除后审计提交竞态，见发行验收记录。

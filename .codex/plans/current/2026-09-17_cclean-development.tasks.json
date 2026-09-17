@@ -34,7 +34,7 @@
     "G2": "passed",
     "G3": "passed",
     "G4Budget": "passed",
-    "G4Full": "not_run",
+    "G4Full": "failed",
     "G5": "not_run"
   },
   "taskStatusContract": {
@@ -976,14 +976,14 @@
       "estimate": "纳入 M4 的 5–8 人日",
       "remoteTaskId": null,
       "evidence": "docs/testing/cleanup-acceptance.md",
-      "validationNote": "三阶段子进程崩溃与 Safety 17 项通过；产品真实限额审计失败待验。"
+      "validationNote": "三阶段真实退出、对抗测试及真实满盘下产品预算停止通过；删除后审计写入竞态和完整 UI 待验。"
     },
     {
       "id": "DEV-019",
       "name": "[CClean][DEV-019] 完成性能、低空间、权限和可访问性验收",
       "stage": "M5",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "failed",
       "optional": false,
       "dependencies": [
         "DEV-010",
@@ -1024,14 +1024,15 @@
       ],
       "estimate": "纳入 M5 的 4–6 人日",
       "remoteTaskId": null,
-      "evidence": "docs/testing/release-acceptance.md"
+      "evidence": "docs/testing/release-acceptance.md",
+      "validationNote": "三轮完整大样本空闲采样内存均超过 200 MiB；最终保留 v3 CPU 0.1322%、峰值 267.19 MiB。实际 200% DPI、部分完整 UI/权限和真实审计提交竞态仍待验。"
     },
     {
       "id": "DEV-020",
       "name": "[CClean][DEV-020] 准备 Windows 测试安装包、用户文档和 GitHub 交付",
       "stage": "M5",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-019"
@@ -1079,7 +1080,8 @@
       ],
       "estimate": "纳入 M5 的 4–6 人日",
       "remoteTaskId": null,
-      "evidence": "docs/testing/release-acceptance.md"
+      "evidence": "docs/testing/release-acceptance.md",
+      "validationNote": "内部自包含安装包编译成功、私有草稿 PR #1 已同步，干净 VM 安装/升级/卸载及前置性能门槛未通过。"
     },
     {
       "id": "DEV-021",

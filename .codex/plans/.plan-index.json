@@ -16,5 +16,6 @@
       "file": "current/2026-09-17_cclean-development.md",
       "status": "in_progress"
     }
-  ]
+  ],
+  "validationSummary": "15 P0 passed; 4 pending_validation; DEV-019 failed on memory; draft PR #1; no release approval"
 }
