@@ -10,6 +10,20 @@ namespace CClean.Tests;
 public class MonitoringTests
 {
     [Fact]
+    public void CalibrationReusesOnlyUnchangedMetadata()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-reuse-" + Guid.NewGuid().ToString("N")));
+        box.CreateFixture("same.bin", 10);
+        box.CreateFixture("changed.bin", 10);
+        var initial = DirectoryScanner.Scan(box.RunDirectory);
+        File.AppendAllText(Path.Combine(box.RunDirectory, "changed.bin"), "changed", System.Text.Encoding.UTF8);
+        var current = DirectoryScanner.Scan(box.RunDirectory, previous: initial.Files);
+        Assert.Same(initial.Files["same.bin"], current.Files["same.bin"]);
+        Assert.NotSame(initial.Files["changed.bin"], current.Files["changed.bin"]);
+        Assert.True(current.Files["changed.bin"].LogicalBytes > initial.Files["changed.bin"].LogicalBytes);
+    }
+
+    [Fact]
     public async Task CalibrationDoesNotInventFileActivity()
     {
         using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-activity-" + Guid.NewGuid().ToString("N")));

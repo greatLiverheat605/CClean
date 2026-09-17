@@ -17,7 +17,7 @@
 
 报告：`artifacts/cache-product-20260917T110136823-5d561160565c474eb2a5009f85a3e8e4/result.json`；`artifacts/cleanup-crashes-20260917T110422038-7d639d61020a4511af7728d2e5ab7f66/result.json`。这些受控验证在当时未提交工作树执行，报告已标 workingTreeDirty，后续构建会单独记录来源。
 
-CleanupRecovery + Safety 17/17；最新全量 MvpP0 42/42。公共保护策略与产品执行器复用，PoC 专用 DeleteFixture 不作为产品授权。
+CleanupRecovery + Safety 17/17；最新全量 MvpP0 43/43。公共保护策略与产品执行器复用，PoC 专用 DeleteFixture 不作为产品授权。
 
 待完成：真实 UI 正向点击永久删除（本机多 Node 消费者使保守策略排除全部 npm 根）；产品审计在真实限额卷上的满盘/IO 失败（M0 的 Win32 112/SQLITE_FULL 实测不直接替代产品执行器）；干净环境集成验收。没有终止用户 Node 进程或绕过消费者保护来凑通过。
 

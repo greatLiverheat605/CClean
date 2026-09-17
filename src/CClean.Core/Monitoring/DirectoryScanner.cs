@@ -6,7 +6,8 @@ public sealed record DirectorySnapshot(IReadOnlyDictionary<string, FileSnapshot>
 
 public static class DirectoryScanner
 {
-    public static DirectorySnapshot Scan(string root, CancellationToken cancellation = default, int maxFiles = 100_000)
+    public static DirectorySnapshot Scan(string root, CancellationToken cancellation = default, int maxFiles = 100_000,
+        IReadOnlyDictionary<string, FileSnapshot>? previous = null)
     {
         var files = new Dictionary<string, FileSnapshot>(StringComparer.OrdinalIgnoreCase);
         var gaps = new List<string>();
@@ -41,7 +42,9 @@ public static class DirectoryScanner
                     }
                     if (files.Count >= maxFiles) throw new IOException("Snapshot file limit exceeded.");
                     var file = WindowsFileMetadata.Read(entry, lease);
-                    files.Add(Path.GetRelativePath(root, entry), file);
+                    var relative = Path.GetRelativePath(root, entry);
+                    if (previous is not null && previous.TryGetValue(relative, out var old) && old == file) file = old;
+                    files.Add(relative, file);
                     if (file.Identity is null && gaps.Count < 1000) gaps.Add("Metadata unavailable");
                 }
             }

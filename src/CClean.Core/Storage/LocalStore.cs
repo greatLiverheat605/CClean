@@ -62,7 +62,11 @@ public sealed class LocalStore : IDisposable
             command.Parameters.AddWithValue("$p", project);
             using var reader = command.ExecuteReader();
             var result = new Dictionary<string, FileSnapshot>(StringComparer.OrdinalIgnoreCase);
-            while (reader.Read()) result[reader.GetString(0)] = JsonSerializer.Deserialize<FileSnapshot>(reader.GetString(1))!;
+            while (reader.Read())
+            {
+                var file = JsonSerializer.Deserialize<FileSnapshot>(reader.GetString(1))!;
+                result[file.Path] = file;
+            }
             return result;
         }
     }

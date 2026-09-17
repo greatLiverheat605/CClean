@@ -63,7 +63,7 @@ public sealed class DirectoryMonitor : IDisposable
             {
                 while (hints.Reader.TryRead(out _)) { }
                 await Task.Delay(100, stop.Token);
-                var next = DirectoryScanner.Scan(root, stop.Token);
+                var next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files);
                 if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
                 lock (sync) snapshot = next;
                 Interlocked.Increment(ref revision);
