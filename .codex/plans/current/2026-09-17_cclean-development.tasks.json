@@ -3,8 +3,8 @@
   "planId": "CCLEAN-20260917-DEV",
   "title": "CClean 从 M0 验证到 MVP 交付",
   "createdAt": "2026-09-17T16:08:28+08:00",
-  "status": "awaiting_execution_approval",
-  "currentTaskId": "DEV-001",
+  "status": "in_progress",
+  "currentTaskId": "DEV-008",
   "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
   "sourcePlan": "2026-09-17_cclean-development.md",
   "requiredTaskCount": 20,
@@ -29,11 +29,11 @@
     ]
   },
   "gates": {
-    "G1": "not_run",
-    "MetadataBaseline": "not_run",
-    "G2": "not_run",
-    "G3": "not_run",
-    "G4Budget": "not_run",
+    "G1": "passed",
+    "MetadataBaseline": "passed",
+    "G2": "passed",
+    "G3": "passed",
+    "G4Budget": "passed",
     "G4Full": "not_run",
     "G5": "not_run"
   },
@@ -55,7 +55,7 @@
       "name": "[CClean][DEV-001] 建立 SDK、实验边界和最小可复用工程",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [],
       "dependencyMode": "all_passed",
@@ -106,14 +106,15 @@
         "G2"
       ],
       "estimate": "0.5–1 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/environment.md"
     },
     {
       "id": "DEV-002",
       "name": "[CClean][DEV-002] 验证文件身份、特殊对象和空间计量",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-001"
@@ -157,14 +158,15 @@
         "G2"
       ],
       "estimate": "0.5–1 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/storage-poc.md"
     },
     {
       "id": "DEV-003",
       "name": "[CClean][DEV-003] 验证目录监听、溢出和最终状态收敛",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-002"
@@ -209,14 +211,15 @@
         "G1"
       ],
       "estimate": "0.5–1 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/monitoring-poc.md"
     },
     {
       "id": "DEV-004",
       "name": "[CClean][DEV-004] 验证按已核实文件对象删除及竞态防护",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-001",
@@ -259,14 +262,15 @@
         "AT-20"
       ],
       "estimate": "1–1.5 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/cleanup-poc.md"
     },
     {
       "id": "DEV-005",
       "name": "[CClean][DEV-005] 确定三工具适配范围和真实外部一键缓存规则",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-001",
@@ -312,14 +316,15 @@
         "AT-15"
       ],
       "estimate": "1–1.5 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/tool-compatibility.md"
     },
     {
       "id": "DEV-006",
       "name": "[CClean][DEV-006] 验证数据库预算、WAL 与低空间降级",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-001"
@@ -358,14 +363,15 @@
         "G4"
       ],
       "estimate": "0.5–1 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/storage-budget-poc.md"
     },
     {
       "id": "DEV-007",
       "name": "[CClean][DEV-007] 汇总 M0 证据并确定后续任务准入",
       "stage": "M0",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-003",
@@ -413,14 +419,15 @@
         "G4"
       ],
       "estimate": "0.5 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/m0-decision.md"
     },
     {
       "id": "DEV-008",
       "name": "[CClean][DEV-008] 建立 WPF 外壳、项目配置和 Windows CI",
       "stage": "M1",
       "priority": "P0",
-      "status": "pending",
+      "status": "in_progress",
       "optional": false,
       "dependencies": [
         "DEV-007"

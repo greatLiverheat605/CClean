@@ -1,0 +1,19 @@
+name: Windows foundation
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet build CClean.slnx -c Release
+      - shell: pwsh
+        run: |
+          dotnet test tests/CClean.Tests -c Release --no-build --filter Category=Foundation --logger "trx;LogFileName=foundation.trx"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [xml]$result = Get-Content tests/CClean.Tests/TestResults/foundation.trx
+          if ([int]$result.TestRun.ResultSummary.Counters.executed -le 0) { throw 'No Foundation tests selected' }

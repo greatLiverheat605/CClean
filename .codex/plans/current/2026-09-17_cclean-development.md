@@ -4,10 +4,10 @@
 
 - 计划 ID：`CCLEAN-20260917-DEV`
 - 创建时间：`2026-09-17T16:08:28+08:00`
-- 状态：**待执行确认；本轮仅完成任务规划**。
+- 状态：**执行中；用户已通过 do-plan 授权实施**。
 - 来源基线：`44cd8c4`；规划前工作区干净，`main` 与 `origin/main` 一致。
 - 复杂度：高；22 个任务，其中 P0 必做 20 个，P1 可选增强 2 个。
-- 当前下一项：**DEV-001：开发环境与实验边界**。
+- 当前下一项：**DEV-008：WPF 只读应用底座**。
 - 本地任务表：[2026-09-17_cclean-development.tasks.json](2026-09-17_cclean-development.tasks.json)。
 - MCP 同步：**未同步**。当前工具目录没有任务管理与全局经验检索接口，远端任务 ID 均为空；本地清单已准备，不把文件保存或 GitHub 提交当作 MCP 同步。
 - 当前文件变更范围：仅 `.codex/plans/` 内的计划、任务表和索引；本轮没有实施源代码、安装 SDK 或运行清理。
@@ -105,7 +105,7 @@ flowchart TD
 ## 详细任务
 ### DEV-001 · M0 · 建立 SDK、实验边界和最小可复用工程
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-001-environment；构建及 9 项测试、6 个 CLI 场景通过）。
 - **依赖**：无。
 - **涉及文件**：`global.json`（拟新增）；`CClean.slnx`（拟新增）；`src/CClean.Core/CClean.Core.csproj`（拟新增）；`tools/CClean.Poc/CClean.Poc.csproj`（拟新增）；`tools/CClean.Poc/Program.cs`（拟新增）；`tests/CClean.Tests/CClean.Tests.csproj`（拟新增）。
 - **目标与操作**：
@@ -125,7 +125,7 @@ flowchart TD
 
 ### DEV-002 · M0 · 验证文件身份、特殊对象和空间计量
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-002-metadata；5 项测试、12 项 PoC 检查通过）。
 - **依赖**：`DEV-001`。
 - **涉及文件**：`src/CClean.Core/Files/WindowsFileMetadata.cs`（拟新增）；`src/CClean.Core/Storage/VolumeSpaceReader.cs`（拟新增）；`tests/CClean.Tests/FileMetadataTests.cs`（拟新增）；`docs/research/storage-poc.md`（拟新增）。
 - **目标与操作**：
@@ -141,7 +141,7 @@ flowchart TD
 
 ### DEV-003 · M0 · 验证目录监听、溢出和最终状态收敛
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-003-monitoring；真实溢出与 12,001 文件收敛通过）。
 - **依赖**：`DEV-002`。
 - **涉及文件**：`src/CClean.Core/Monitoring/DirectoryMonitor.cs`（拟新增）；`src/CClean.Core/Monitoring/DirectoryScanner.cs`（拟新增）；`tests/CClean.Tests/MonitoringTests.cs`（拟新增）；`docs/research/monitoring-poc.md`（拟新增）。
 - **目标与操作**：
@@ -158,7 +158,7 @@ flowchart TD
 
 ### DEV-004 · M0 · 验证按已核实文件对象删除及竞态防护
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-004-deletion；30 轮对抗、30 正常删除、150 对象保护通过）。
 - **依赖**：`DEV-001`、`DEV-002`。
 - **涉及文件**：`src/CClean.Core/Cleanup/VerifiedFileDeletion.cs`（拟新增）；`tests/CClean.Tests/DeletionSafetyTests.cs`（拟新增）；`docs/research/cleanup-poc.md`（拟新增）。
 - **目标与操作**：
@@ -174,7 +174,7 @@ flowchart TD
 
 ### DEV-005 · M0 · 确定三工具适配范围和真实外部一键缓存规则
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-005-cache；独立 npm 缓存真实重建通过）。
 - **依赖**：`DEV-001`、`DEV-004`。
 - **涉及文件**：`src/CClean.Core/Tools/ToolDefinition.cs`（拟新增）；`src/CClean.Core/Cleanup/CacheRule.cs`（拟新增）；`tests/CClean.Tests/CacheRuleCompatibilityTests.cs`（拟新增）；`docs/research/tool-compatibility.md`（拟新增）。
 - **目标与操作**：
@@ -192,7 +192,7 @@ flowchart TD
 
 ### DEV-006 · M0 · 验证数据库预算、WAL 与低空间降级
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；via sub-006-budget；WAL 与真实磁盘满通过）。
 - **依赖**：`DEV-001`。
 - **涉及文件**：`src/CClean.Core/Storage/RuntimeBudget.cs`（拟新增）；`tests/CClean.Tests/RuntimeBudgetTests.cs`（拟新增）；`docs/research/storage-budget-poc.md`（拟新增）。
 - **目标与操作**：
@@ -209,7 +209,7 @@ flowchart TD
 
 ### DEV-007 · M0 · 汇总 M0 证据并确定后续任务准入
 
-- **状态**：待执行（P0）。
+- **状态**：已完成 ✓（P0；22 项 M0 测试通过，证据评审完成）。
 - **依赖**：`DEV-003`、`DEV-002`、`DEV-004`、`DEV-005`、`DEV-006`；等待终态结果，不要求所有门槛通过。
 - **涉及文件**：`docs/research/m0-decision.md`（拟新增）；`docs/02-architecture.md`（既有，执行时更新）；`docs/05-delivery-plan.md`（既有，执行时更新）；`docs/06-decisions-and-sources.md`（既有，执行时更新）。
 - **目标与操作**：
@@ -226,7 +226,7 @@ flowchart TD
 
 ### DEV-008 · M1 · 建立 WPF 外壳、项目配置和 Windows CI
 
-- **状态**：待执行（P0）。
+- **状态**：执行中（P0；子计划 sub-008-app）。
 - **依赖**：`DEV-007`；附加门槛 G1:passed、MetadataBaseline:passed、G4Budget:passed。
 - **涉及文件**：`src/CClean.App/CClean.App.csproj`（拟新增）；`src/CClean.App/App.xaml`（拟新增）；`src/CClean.App/MainWindow.xaml`（拟新增）；`.github/workflows/ci.yml`（拟新增）。
 - **目标与操作**：
@@ -521,7 +521,27 @@ GitHub 同步只提交已审阅的计划/源码和脱敏摘要，不提交 `arti
 
 ## 执行入口
 
-- [ ] 本计划的应用开发执行已由用户明确确认。
+- [x] 本计划的应用开发执行已由用户明确确认。
 - 后续入口：`/do-plan 2026-09-17_cclean-development.md`。
 - 按用户指定的 `plan` 技能，本轮仅生成计划；其原文为“**禁止自动执行**”“**必须等待用户明确输入 /do-plan**”。
 - 收到执行指令后从 DEV-001 开始，默认覆盖 20 项 P0；普通修复、独立任务推进和既有 GitHub 同步不逐步重复请求确认。只有确实需要新业务决定或超出授权范围时再说明具体原因。
+
+### DEV-001 执行启动
+
+- 用户已授权按计划推进，当前工作区干净，未发现中断残留实现。
+- SDK 缺失；Microsoft 官方元数据当前稳定 SDK 为 10.0.401，正在独立 D 盘实验根下载并校验 SHA-512。
+- 子计划：[sub-001-environment](2026-09-17_cclean-development/sub-001-environment.md)。
+- MCP 任务工具仍不可用，按既定降级契约维护本地状态。
+
+| 2026-09-17 DEV-001 | SDK 安装、Core/PoC/xUnit、路径归属与容量守卫 | 自检通过；详见 docs/research/environment.md；MCP 不可用 |
+
+| 2026-09-17 DEV-002 | 句柄身份、特殊对象与空间计量 | 自检通过；docs/research/storage-poc.md；MCP 未同步 |
+
+| 2026-09-17 DEV-003 | 真实原生溢出 1 次，12,001 文件 6.372 秒收敛 | docs/research/monitoring-poc.md；G1 受控规模通过；MCP 未同步 |
+
+| 2026-09-17 DEV-004 | 同句柄删除与 30 轮竞态检查 | docs/research/cleanup-poc.md；G2 受控范围通过；MCP 未同步 |
+
+| 2026-09-17 DEV-005 | npm 11.19.0 独立缓存内容+索引删除后真实重建 | docs/research/tool-compatibility.md；G3 条件通过；MCP 未同步 |
+
+| 2026-09-17 DEV-006 | WAL 守卫与隔离 VHDX 实际 I/O 失败 | G4Budget 通过；VHDX 已卸载 |
+| 2026-09-17 DEV-007 | M0 证据评审与 22 项测试 | docs/research/m0-decision.md；M1 准入满足 |

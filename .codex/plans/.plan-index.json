@@ -3,8 +3,8 @@
   "activePlanId": "CCLEAN-20260917-DEV",
   "activePlan": "current/2026-09-17_cclean-development.md",
   "taskBoard": "current/2026-09-17_cclean-development.tasks.json",
-  "status": "awaiting_execution_approval",
-  "nextTaskId": "DEV-001",
+  "status": "in_progress",
+  "nextTaskId": "DEV-008",
   "requiredTaskCount": 20,
   "optionalTaskCount": 2,
   "mcpSyncStatus": "pending_unavailable",
@@ -14,7 +14,7 @@
     {
       "id": "CCLEAN-20260917-DEV",
       "file": "current/2026-09-17_cclean-development.md",
-      "status": "awaiting_execution_approval"
+      "status": "in_progress"
     }
   ]
 }

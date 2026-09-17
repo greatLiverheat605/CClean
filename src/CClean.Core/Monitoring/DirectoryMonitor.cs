@@ -1,0 +1,79 @@
+using System.Threading.Channels;
+
+namespace CClean.Core.Monitoring;
+
+public sealed class DirectoryMonitor : IDisposable
+{
+    private readonly FileSystemWatcher watcher;
+    private readonly Channel<bool> hints;
+    private readonly CancellationTokenSource stop = new();
+    private readonly Task worker;
+    private readonly string root;
+    private readonly object sync = new();
+    private DirectorySnapshot snapshot = new(new Dictionary<string, Files.FileSnapshot>(), ["Initial scan pending"], DateTimeOffset.MinValue);
+    private long applicationGaps, nativeGaps, scanGaps, revision;
+    public long ApplicationGaps => Interlocked.Read(ref applicationGaps);
+    public long NativeGaps => Interlocked.Read(ref nativeGaps);
+    public long ScanGaps => Interlocked.Read(ref scanGaps);
+    public long Revision => Interlocked.Read(ref revision);
+    public DirectorySnapshot Snapshot { get { lock (sync) return snapshot; } }
+
+    // beforeNotification is a controlled probe barrier; it never synthesizes overflow errors.
+    public DirectoryMonitor(string root, int queueCapacity = 128, Action? beforeNotification = null)
+    {
+        this.root = Path.GetFullPath(root);
+        if (queueCapacity <= 0) throw new ArgumentOutOfRangeException(nameof(queueCapacity));
+        hints = Channel.CreateBounded<bool>(new BoundedChannelOptions(queueCapacity) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true });
+        watcher = new FileSystemWatcher(this.root)
+        {
+            IncludeSubdirectories = true, InternalBufferSize = 4096,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite
+        };
+        void Changed(object sender, FileSystemEventArgs args) { beforeNotification?.Invoke(); Hint(); }
+        watcher.Created += Changed;
+        watcher.Changed += Changed;
+        watcher.Deleted += Changed;
+        watcher.Renamed += (sender, args) => Changed(sender, args);
+        watcher.Error += (_, args) =>
+        {
+            if (args.GetException() is InternalBufferOverflowException) Interlocked.Increment(ref nativeGaps);
+            else Interlocked.Increment(ref scanGaps);
+            Hint();
+        };
+        // Events arriving during the initial scan schedule another scan.
+        watcher.EnableRaisingEvents = true;
+        worker = Task.Run(Collect);
+        Hint();
+    }
+
+    private void Hint()
+    {
+        if (!hints.Writer.TryWrite(true)) Interlocked.Increment(ref applicationGaps);
+    }
+
+    private async Task Collect()
+    {
+        try
+        {
+            while (await hints.Reader.WaitToReadAsync(stop.Token))
+            {
+                while (hints.Reader.TryRead(out _)) { }
+                await Task.Delay(100, stop.Token);
+                var next = DirectoryScanner.Scan(root, stop.Token);
+                if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
+                lock (sync) snapshot = next;
+                Interlocked.Increment(ref revision);
+            }
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+    }
+
+    public void Rescan() => Hint();
+    public void Dispose()
+    {
+        watcher.Dispose();
+        stop.Cancel();
+        worker.GetAwaiter().GetResult();
+        stop.Dispose();
+    }
+}

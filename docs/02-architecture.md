@@ -153,3 +153,7 @@ SQLite 使用有界批量写入与单写入通道，检查 WAL 大小并按预�
 - G5：ETW 的精确归因在测试范围内错误归因为 0；无法确认的结果保持未知。未通过则发布普通模式并明确能力差异。
 
 具体 PoC 与验收矩阵见 [开发执行计划](05-delivery-plan.md)。
+
+## 2026-09-17 M0 实施更新
+
+M0 受控实验已完成，G1、文件身份、G2、条件性 G3 和 G4Budget 有实际证据；完整性能及桌面验收未完成。技术栈固定 .NET SDK 10.0.401、WPF、Microsoft.Data.Sqlite 10.0.12；支持边界与原始失败修正见 [M0 评审](research/m0-decision.md)。后续状态以 .codex/plans/current 任务表为准。
