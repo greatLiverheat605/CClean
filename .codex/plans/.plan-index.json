@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "activePlanId": "CCLEAN-20260917-DEV",
+  "activePlan": "current/2026-09-17_cclean-development.md",
+  "taskBoard": "current/2026-09-17_cclean-development.tasks.json",
+  "status": "awaiting_execution_approval",
+  "nextTaskId": "DEV-001",
+  "requiredTaskCount": 20,
+  "optionalTaskCount": 2,
+  "mcpSyncStatus": "pending_unavailable",
+  "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
+  "createdAt": "2026-09-17T16:08:28+08:00",
+  "plans": [
+    {
+      "id": "CCLEAN-20260917-DEV",
+      "file": "current/2026-09-17_cclean-development.md",
+      "status": "awaiting_execution_approval"
+    }
+  ]
+}

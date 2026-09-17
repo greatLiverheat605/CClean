@@ -1,0 +1,1165 @@
+{
+  "schemaVersion": 1,
+  "planId": "CCLEAN-20260917-DEV",
+  "title": "CClean 从 M0 验证到 MVP 交付",
+  "createdAt": "2026-09-17T16:08:28+08:00",
+  "status": "awaiting_execution_approval",
+  "currentTaskId": "DEV-001",
+  "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
+  "sourcePlan": "2026-09-17_cclean-development.md",
+  "requiredTaskCount": 20,
+  "optionalTaskCount": 2,
+  "sync": {
+    "provider": "task-mcp",
+    "status": "pending_unavailable",
+    "remotePlanId": null,
+    "lastSyncedAt": null,
+    "missingTools": [
+      "search_nodes",
+      "plan_task",
+      "analyze_task",
+      "reflect_task",
+      "split_tasks"
+    ],
+    "retryPolicy": "工具可用后先查询匹配计划/任务，按本地稳定 ID 追加或更新；不清空其他任务，不虚构远端 ID。",
+    "notEquivalentTo": [
+      "GitHub commit",
+      "Codex task/thread",
+      "local task board"
+    ]
+  },
+  "gates": {
+    "G1": "not_run",
+    "MetadataBaseline": "not_run",
+    "G2": "not_run",
+    "G3": "not_run",
+    "G4Budget": "not_run",
+    "G4Full": "not_run",
+    "G5": "not_run"
+  },
+  "taskStatusContract": {
+    "pending": "尚未开始",
+    "in_progress": "正在实施",
+    "passed": "任务验收已通过",
+    "failed": "已执行但验收未通过",
+    "blocked": "前置门槛/环境阻塞",
+    "deferred": "不属于默认 MVP 执行队列"
+  },
+  "dependencyContract": {
+    "all_passed": "所有依赖任务通过，且 requiredGates 全部通过，才可执行",
+    "all_terminal": "等待依赖已完成评估（passed/failed/blocked），用于汇总结果；完成该评审不等于门槛通过"
+  },
+  "tasks": [
+    {
+      "id": "DEV-001",
+      "name": "[CClean][DEV-001] 建立 SDK、实验边界和最小可复用工程",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "重新探测 .NET 10 x64 SDK；缺失时使用 Microsoft 官方发行源安装，按实际稳定版本写 global.json，不填写虚构补丁版本。",
+      "implementationGuide": "重新探测 .NET 10 x64 SDK；缺失时使用 Microsoft 官方发行源安装，按实际稳定版本写 global.json，不填写虚构补丁版本。\n建立 Core、单一 PoC runner 与 xUnit 测试工程；暂不创建 WPF 空页面。只增加必要的测试依赖。\nPoC 统一提供 --case、--sandbox、--output 参数，创建独立实验根标记并校验真实路径、卷和容量；清理仅针对本次生成且带标记的对象。小型测试默认总量不超过 256 MiB。\n大规模数据优先放在重新核实的非系统 NTFS 卷或隔离虚拟机；C 盘只做受限小型用例，不以填满 C 盘测试低空间。\nSDK 安装包、NuGet 下载和实验输出采用显式目录与容量检查；不默认依赖 winget 可用，不擅自更换技术栈。\n统一支持 --max-fixture-bytes、--reserve-free-bytes、--file-count、--logical-bytes；实验根必须新建或带本计划归属标记。超过默认 256 MiB 的实验必须显式选择非系统 NTFS 卷并通过容量守卫。",
+      "relatedFiles": [
+        {
+          "path": "global.json",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "CClean.slnx",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/CClean.Core.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tools/CClean.Poc/CClean.Poc.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tools/CClean.Poc/Program.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CClean.Tests.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet --info",
+        "dotnet build CClean.slnx -c Release",
+        "dotnet run --project tools/CClean.Poc -- --case environment --sandbox artifacts/m0/sandbox --output artifacts/m0/environment.json"
+      ],
+      "verificationCriteria": "记录 SDK/OS/架构/卷与实验上限；越界根、既有非实验目录、链接和容量不足均拒绝；Core 与 runner 可构建，未执行任何真实缓存删除。",
+      "failureHandling": "SDK 或实验盘条件不满足时记录具体环境问题，不以空报告通过；可继续不依赖运行环境的资料审查。",
+      "requirementReferences": [
+        "T00",
+        "G2"
+      ],
+      "estimate": "0.5–1 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-002",
+      "name": "[CClean][DEV-002] 验证文件身份、特殊对象和空间计量",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-001"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "从句柄读取卷标识、File ID、大小和分配信息，区分当前用户可用量与卷剩余量。",
+      "implementationGuide": "从句柄读取卷标识、File ID、大小和分配信息，区分当前用户可用量与卷剩余量。\n构造硬链接、junction、符号链接、ADS、压缩/稀疏、中文/长路径、ACL 拒绝用例；涉及额外权限的测试明确单列。\n硬链接去重；链接不跟随；命名数据流、特殊或无法检查对象标记不完整并排除清理。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Files/WindowsFileMetadata.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Storage/VolumeSpaceReader.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/FileMetadataTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/storage-poc.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case metadata --sandbox artifacts/m0/sandbox --output artifacts/m0/metadata.json",
+        "dotnet test tests/CClean.Tests --filter Category=FileMetadata"
+      ],
+      "verificationCriteria": "普通对象身份可稳定读取；不同别名不重复累计；未知不计为零；被跳过的管理员场景明确列出，不能算通过。",
+      "failureHandling": "不支持的对象类型保持只读和显式排除；若普通 NTFS 对象身份不可靠，G2 不放行。",
+      "requirementReferences": [
+        "AT-06",
+        "AT-09",
+        "AT-19",
+        "G2"
+      ],
+      "estimate": "0.5–1 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-003",
+      "name": "[CClean][DEV-003] 验证目录监听、溢出和最终状态收敛",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-002"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "复用 Core 完成最小元数据枚举与 FileSystemWatcher；先监听再扫描、归并提示并校准，不保存无界原始事件。",
+      "implementationGuide": "复用 Core 完成最小元数据枚举与 FileSystemWatcher；先监听再扫描、归并提示并校准，不保存无界原始事件。\n受控制造创建、追加、覆盖、截断、重命名、整目录移动和删除，按静默期独立枚举检查结果。\n同时覆盖应用队列溢出和底层通知溢出；底层未实际触发时标记未验证，不能用注入错误代替实测。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Monitoring/DirectoryMonitor.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Monitoring/DirectoryScanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/MonitoringTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/monitoring-poc.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case watcher --sandbox artifacts/m0/sandbox --output artifacts/m0/watcher.json",
+        "dotnet run --project tools/CClean.Poc -- --case watcher-overflow --sandbox artifacts/m0/sandbox --output artifacts/m0/watcher-overflow.json",
+        "dotnet test tests/CClean.Tests --filter Category=Monitoring"
+      ],
+      "verificationCriteria": "受控集合最终路径与大小 100% 一致；缺口可见且不会被补扫抹去。大集合静默后目标 60 秒内恢复，环境和规模随报告保存；小集合通过不替代规模目标。",
+      "failureHandling": "优先缩小监听范围、修复队列与补扫；历史不可恢复就保留缺口，不捏造写入序列。",
+      "requirementReferences": [
+        "FR-03",
+        "AT-01",
+        "AT-02",
+        "G1"
+      ],
+      "estimate": "0.5–1 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-004",
+      "name": "[CClean][DEV-004] 验证按已核实文件对象删除及竞态防护",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-001",
+        "DEV-002"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "仅在实验沙箱实现同句柄元数据复核与删除，验证祖先边界、共享写入/删除限制和特殊对象排除。",
+      "implementationGuide": "仅在实验沙箱实现同句柄元数据复核与删除，验证祖先边界、共享写入/删除限制和特殊对象排除。\n用可控同步点制造叶子替换、祖先替换、新增文件/ADS、路径前缀混淆和文件占用；不能只靠睡眠碰运气。\n记录实验前后保护对象身份与内容校验值，独立确认没有清单外删除；产品执行入口仍不开放。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/VerifiedFileDeletion.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/DeletionSafetyTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/cleanup-poc.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case deletion-safety --sandbox artifacts/m0/sandbox --output artifacts/m0/deletion-safety.json",
+        "dotnet test tests/CClean.Tests --filter Category=DeletionSafety"
+      ],
+      "verificationCriteria": "G2：正常批准的普通缓存文件必须成功删除；重复对抗用例中保护对象、未知对象和清单外对象误删为 0。不稳定对象必须跳过，但不能以全部跳过冒充通过。",
+      "failureHandling": "关闭删除能力并修复复核点；普通只读工作可继续，不降低保护换取通过。",
+      "requirementReferences": [
+        "G2",
+        "AT-05",
+        "AT-06",
+        "AT-07",
+        "AT-09",
+        "AT-19",
+        "AT-20"
+      ],
+      "estimate": "1–1.5 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-005",
+      "name": "[CClean][DEV-005] 确定三工具适配范围和真实外部一键缓存规则",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-001",
+        "DEV-004"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "记录 Codex、Claude Code、ZCode 的测试版本与 A/B/C 能力级别；不读取聊天、凭据或未经证实的内部数据库。",
+      "implementationGuide": "记录 Codex、Claude Code、ZCode 的测试版本与 A/B/C 能力级别；不读取聊天、凭据或未经证实的内部数据库。\n先调查三工具已证实的独占可重建缓存；若无可支持对象，验证真实开发工具显式配置的独立缓存根，例如 npm 的独立 cache。默认全局缓存始终标为共享。\n由真实工具在隔离根生成缓存，按 DEV-004 对象方案清理后重新运行验证重建；未知版本、活跃消费者、共享根和新文件均测试排除。\n冻结至少一条可进入常规一键的外部规则：可靠发现方式、版本、独占依据、活动排除、执行粒度和重建代价。不得为过关把普通临时文件改叫外部缓存。\n若规则依赖用户显式配置独立缓存根，必须把该前置条件写入兼容表和界面；不能静默改变用户工作流，也不能宣称默认共享缓存已支持一键。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Tools/ToolDefinition.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CacheRule.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CacheRuleCompatibilityTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/tool-compatibility.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case cache-rule --sandbox artifacts/m0/sandbox --output artifacts/m0/cache-rule.json",
+        "dotnet test tests/CClean.Tests --filter Category=CacheCompatibility"
+      ],
+      "verificationCriteria": "G3：至少一个真实外部独占缓存规则可安全进入常规一键；三目标工具均有明确基础能力与未支持项，不能只凭目录名判断可删除。",
+      "failureHandling": "限定 1–1.5 人日完成第一轮候选验证；无可行规则就输出证据和未完成门槛，继续只读链路，不用共享手动清理或自身日志替代。",
+      "requirementReferences": [
+        "FR-13",
+        "FR-14",
+        "G3",
+        "AT-04",
+        "AT-15"
+      ],
+      "estimate": "1–1.5 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-006",
+      "name": "[CClean][DEV-006] 验证数据库预算、WAL 与低空间降级",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-001"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "用 Microsoft.Data.Sqlite 验证批量写入、长读事务、WAL 增长和 checkpoint，记录真实文件总占用。",
+      "implementationGuide": "用 Microsoft.Data.Sqlite 验证批量写入、长读事务、WAL 增长和 checkpoint，记录真实文件总占用。\n通过受控故障注入验证空间不足和审计写失败，再在隔离限额环境验证实际 I/O 失败；禁止把开发机 C 盘写满。\n验证 DB+WAL+SHM 300 MiB、日志 50 MiB、临时文件 20 MiB、总运行数据 400 MiB 的守卫；低空间禁止大 VACUUM。\n正向预算压力在确认的非系统 NTFS 实验根运行，上限 1 GiB、保留至少 10 GiB 空间；另在自动测试中验证默认 256 MiB 条件不足时被拒绝。D 盘只是当前已观察可用的示例，执行时重验；不满足则选另一已确认非系统实验卷并记录。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Storage/RuntimeBudget.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/RuntimeBudgetTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/storage-budget-poc.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case storage-budget --sandbox D:/CCleanLab/CCLEAN-20260917-DEV/storage-budget --max-fixture-bytes 1073741824 --reserve-free-bytes 10737418240 --output artifacts/m0/storage-budget.json",
+        "dotnet test tests/CClean.Tests --filter Category=RuntimeBudget"
+      ],
+      "verificationCriteria": "达到预算前开始降级，不因长事务无限涨 WAL；审计不可写时拒绝新删除；注入测试和真实限额测试结果分别标注。 M0 只验证 G4 的预算与失败部分，完整 UI CPU/内存目标仍待 DEV-019。",
+      "failureHandling": "先限制采集与扩展索引，保留容量查询；修复预算前不推进清理执行集成。",
+      "requirementReferences": [
+        "FR-12",
+        "NFR-05",
+        "AT-13",
+        "G4"
+      ],
+      "estimate": "0.5–1 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-007",
+      "name": "[CClean][DEV-007] 汇总 M0 证据并确定后续任务准入",
+      "stage": "M0",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-003",
+        "DEV-002",
+        "DEV-004",
+        "DEV-005",
+        "DEV-006"
+      ],
+      "dependencyMode": "all_terminal",
+      "requiredGates": [],
+      "description": "逐一汇总 G1–G4 为通过/失败/未验证，关联测试版本、原始结果的脱敏摘要和复现命令。",
+      "implementationGuide": "逐一汇总 G1–G4 为通过/失败/未验证，关联测试版本、原始结果的脱敏摘要和复现命令。\n冻结技术栈、规则支持范围及测试基线；对不成立的目标记录实际结果和调整理由。\n只读链路只依赖其必要前置；任何 G2/G3 未通过都阻止完整清理 MVP，而非停止一切独立工作。\n全量 M0 测试的非零退出码是本任务的评审输入；必须如实记录失败/缺失，而非强求所有测试通过。评审任务按证据是否完整、门槛和后继状态是否准确判定完成。",
+      "relatedFiles": [
+        {
+          "path": "docs/research/m0-decision.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/02-architecture.md",
+          "changeType": "update-existing",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/05-delivery-plan.md",
+          "changeType": "update-existing",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/06-decisions-and-sources.md",
+          "changeType": "update-existing",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=M0",
+        "逐项核对 m0-decision.md 与 PoC JSON，确认 skipped 未被当成 passed"
+      ],
+      "verificationCriteria": "每个门槛有证据和明确影响；不含真实私密路径、文件内容或假通过记录；后续任务状态与门槛一致。 本任务完成表示评审完成，不表示所有门槛通过或 M0 全部完成。",
+      "failureHandling": "按失败门槛回到对应任务；常规修复由执行者处理，不为每次重试再次索要确认。",
+      "requirementReferences": [
+        "G1",
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "estimate": "0.5 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-008",
+      "name": "[CClean][DEV-008] 建立 WPF 外壳、项目配置和 Windows CI",
+      "stage": "M1",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-007"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G1:passed",
+        "MetadataBaseline:passed",
+        "G4Budget:passed"
+      ],
+      "description": "复用 M0 Core，加入 WPF App、基本导航、错误呈现和普通权限启动；不引入 Web 服务。",
+      "implementationGuide": "复用 M0 Core，加入 WPF App、基本导航、错误呈现和普通权限启动；不引入 Web 服务。\n建立 Windows 构建与无破坏性测试 CI，固定 SDK 与必要依赖。\n后台操作支持取消，主线程不执行目录枚举；真实删除入口保持关闭。\nFoundation 分类只涵盖环境、元数据、监测、预算和只读 WPF 基础；G2/G3 研究测试单独报告失败，不作为只读链路的必过 CI。所有基础必测仍须真实通过。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/CClean.App.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/App.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/MainWindow.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet build CClean.slnx -c Release",
+        "dotnet test tests/CClean.Tests -c Release --filter Category=Foundation",
+        "Windows 普通用户运行 App；检查 CI 对应提交结果"
+      ],
+      "verificationCriteria": "普通模式可启动、切换页面、显示错误，CI 构建与受控测试通过；无需管理员才能进入主界面。",
+      "failureHandling": "保留 Core/PoC 可运行，修复 WPF/CI 配置；不扩大框架范围。",
+      "requirementReferences": [
+        "FR-01",
+        "NFR-01"
+      ],
+      "estimate": "纳入 M1 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-009",
+      "name": "[CClean][DEV-009] 集成目录发现、持续监测和覆盖状态",
+      "stage": "M1",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-008"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "增加用户确认范围内的限额只读发现，单批 30 秒或 100,000 对象，支持继续与取消。",
+      "implementationGuide": "增加用户确认范围内的限额只读发现，单批 30 秒或 100,000 对象，支持继续与取消。\n登记跨盘项目与 C 盘缓存，去重重叠根；发现结果需用户确认才持续监测，不能自动授权清理。\n集成补扫、暂停、重启恢复与完整性状态；不能把访问失败显示为 0 B。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Projects/ProjectRegistry.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Monitoring/DirectoryDiscovery.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/ProjectSetupView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/DiscoveryTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=Discovery",
+        "执行 AT-01、AT-02、AT-03、AT-21 的桌面流程"
+      ],
+      "verificationCriteria": "用户无需预先知道所有缓存路径即可发现候选；覆盖和历史缺口明确；C 盘数据不会混入其他卷占用。",
+      "failureHandling": "限制根目录/队列并修复补扫；保存已完成覆盖，不以无限扫描解决。",
+      "requirementReferences": [
+        "FR-02",
+        "FR-03",
+        "AT-03",
+        "AT-21"
+      ],
+      "estimate": "纳入 M1 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-010",
+      "name": "[CClean][DEV-010] 落地索引、容量总览和自身资源守卫",
+      "stage": "M1",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-008",
+        "DEV-009"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "将 PoC 预算方案接入正式索引、迁移、批量写入和保留策略，区分可重建索引与清理审计。",
+      "implementationGuide": "将 PoC 预算方案接入正式索引、迁移、批量写入和保留策略，区分可重建索引与清理审计。\n实现容量采样、当前占用/净增长、未知计量与范围说明，文件列表虚拟化。\n紧急空间模式暂停扩展扫描与历史落盘，仍保留容量查询和已有索引；相同容量预算约束所有辅助文件。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Storage/LocalStore.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/FilesView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/LocalStoreTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=Storage",
+        "执行 100,000 文件扫描与 10 分钟空闲资源测量，记录规模、耗时和预算"
+      ],
+      "verificationCriteria": "FR-01～03、FR-12 的只读闭环可用；资源目标实测或明确差距，未开放删除。",
+      "failureHandling": "先降采集量/索引粒度，再调优；不能隐藏不完整范围。",
+      "requirementReferences": [
+        "FR-01",
+        "FR-07",
+        "FR-12",
+        "AT-13"
+      ],
+      "estimate": "纳入 M1 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-011",
+      "name": "[CClean][DEV-011] 实现会话、工具基础适配与活动保护",
+      "stage": "M2",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-010"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "实现手动会话的开始、结束、异常中断与恢复，三工具全部支持 A 级目录/标签绑定。",
+      "implementationGuide": "实现手动会话的开始、结束、异常中断与恢复，三工具全部支持 A 级目录/标签绑定。\n对经验证版本逐步启用进程绑定，使用 PID + 启动时间，不把进程树直接等同聊天会话。\n形成所有已登记项目、会话及关联依赖的活动保护快照；显式结束不自动变成可删除。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Sessions/SessionRegistry.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Tools/ToolCatalog.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/SessionsView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/SessionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=Sessions",
+        "逐个演示 Codex、Claude Code、ZCode 的登记与手动会话；执行 AT-08"
+      ],
+      "verificationCriteria": "三工具的基础模式均可用；版本未支持时明确降级；进程复用和多会话不误判。",
+      "failureHandling": "回退手动绑定，保留未知/保护状态；不读取私有数据库凑自动识别。",
+      "requirementReferences": [
+        "FR-04",
+        "FR-13",
+        "AT-08",
+        "AT-15"
+      ],
+      "estimate": "纳入 M2 的 5–7 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-012",
+      "name": "[CClean][DEV-012] 实现证据分类、共享去重和时间聚合查询",
+      "stage": "M2",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-011"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "分别保存进程证据、上下文关联、共享、未知；普通监听没有 PID 时不显示进程证实。",
+      "implementationGuide": "分别保存进程证据、上下文关联、共享、未知；普通监听没有 PID 时不显示进程证实。\n按会话/目录/时间桶聚合，保证全局占用只统计一次，项目可显示共享关联。\n保留初始存量、监测缺口和保留期边界；历史节点不能直接作为当前删除清单。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Attribution/AttributionRules.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/History/TimelineQuery.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/AttributionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=Attribution",
+        "两个并发会话写共享目录，检查汇总不重复、未知不强分配"
+      ],
+      "verificationCriteria": "FR-05 的证据与指标语义一致；受控共享用例不出现虚假独占量。",
+      "failureHandling": "保留未知和共享，不以百分比或随机分摊掩盖归因不足。",
+      "requirementReferences": [
+        "FR-05",
+        "AT-04"
+      ],
+      "estimate": "纳入 M2 的 5–7 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-013",
+      "name": "[CClean][DEV-013] 完成分支时间线、详情和空间筛选",
+      "stage": "M2",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-012"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "实现项目泳道、会话分支、聚合文件变化节点及独立的共享/未知行。",
+      "implementationGuide": "实现项目泳道、会话分支、聚合文件变化节点及独立的共享/未知行。\n加入时间/项目/工具/证据筛选、节点详情和列表替代入口；最多 500 个可见节点。\n展示扫描中、缺口、过期和无权限状态；支持键盘、DPI 与减少动画。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/Views/TimelineView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Controls/TimelineCanvas.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/ViewModels/TimelineViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/TimelineQueryTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=Timeline",
+        "dotnet run --project src/CClean.App",
+        "执行 AT-17：大量节点、125%/150%/200% DPI、键盘与空/错状态"
+      ],
+      "verificationCriteria": "用户可从空间增长追到文件与依据；不误解成 Git 内容回滚；P95 更新目标和资源消耗有记录。",
+      "failureHandling": "优先扩大时间桶和虚拟化，保留列表入口，不渲染无界节点。",
+      "requirementReferences": [
+        "FR-06",
+        "FR-07",
+        "AT-17"
+      ],
+      "estimate": "纳入 M2 的 5–7 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-014",
+      "name": "[CClean][DEV-014] 实现版本化规则和所有入口的保护分类",
+      "stage": "M3",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-010",
+        "DEV-011",
+        "DEV-002"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "实现源码、凭据、Agent 历史、系统目录、活跃依赖、未知来源与特殊文件排除，手动和一键共用规则。",
+      "implementationGuide": "实现源码、凭据、Agent 历史、系统目录、活跃依赖、未知来源与特殊文件排除，手动和一键共用规则。\n外部规则启用以 DEV-005 通过为前提；未通过时只能使用合成规则测试，产品外部规则不启用。\n共享缓存与独占缓存分流，默认外部规则关闭，全选不能绕过保护。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/ProtectionPolicy.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/RuleCatalog.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/ProtectionPolicyTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=Protection",
+        "执行 AT-04、AT-16、AT-19、AT-20 的逐项与全选路径"
+      ],
+      "verificationCriteria": "每项分类有规则和排除依据；任何入口均不能把未知/活跃/特殊对象放进可执行集合。",
+      "failureHandling": "不确定项保守排除，修复共享规则；禁止临时弹窗绕过。",
+      "requirementReferences": [
+        "FR-08",
+        "AT-20"
+      ],
+      "estimate": "纳入 M3 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-015",
+      "name": "[CClean][DEV-015] 生成一次性清理清单与 dry-run 界面",
+      "stage": "M3",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-014",
+        "DEV-002"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "清单绑定文件身份、数据流检查、元数据、规则/保护版本、执行动作和 5 分钟有效期。",
+      "implementationGuide": "清单绑定文件身份、数据流检查、元数据、规则/保护版本、执行动作和 5 分钟有效期。\n实现接收当前文件对象选择的预览契约，先接文件列表手动选择与已启用规则批量入口；显示估算不确定性、排除原因、永久删除和重建影响。图节点实际接线在依赖时间线的 DEV-017 完成。\n只执行 dry-run；预览后新文件不自动入单，历史节点先重新获取当前对象。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupPlanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupPlanTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=CleanupPlan",
+        "从单文件与一键两个入口执行 AT-07、AT-10、AT-20"
+      ],
+      "verificationCriteria": "相同状态的预览集合可复现，条件变化使清单失效，预览不会触发真实删除。",
+      "failureHandling": "修复清单/活动版本与身份绑定，不通过则保持执行器关闭。",
+      "requirementReferences": [
+        "FR-09",
+        "AT-07",
+        "AT-10"
+      ],
+      "estimate": "纳入 M3 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-016",
+      "name": "[CClean][DEV-016] 集成受控执行器与可持久化审计",
+      "stage": "M4",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-004",
+        "DEV-005",
+        "DEV-007",
+        "DEV-015"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2:passed",
+        "G3:passed"
+      ],
+      "description": "只有 G2/G3 通过并记录后才开产品执行器，复用同句柄删除方案。",
+      "implementationGuide": "只有 G2/G3 通过并记录后才开产品执行器，复用同句柄删除方案。\n实现单任务租约、批准范围绑定、逐项重新校验，执行前及项间持久化审计。\n变化、占用、权限失败时跳过；不强杀进程、不提权强删；取消只影响后续项。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupExecutor.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupJournal.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=CleanupExecution",
+        "dotnet test tests/CClean.Tests --filter Category=DeletionSafety"
+      ],
+      "verificationCriteria": "执行严格限于批准对象；失效项跳过；不可审计时不新删；重复点击不重复执行。",
+      "failureHandling": "任一误删/越界即禁用执行并回到 G2；独立只读能力仍可用。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "G2",
+        "G3",
+        "AT-05",
+        "AT-10"
+      ],
+      "estimate": "纳入 M4 的 5–8 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-017",
+      "name": "[CClean][DEV-017] 完成手动与一键清理的用户闭环",
+      "stage": "M4",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-013",
+        "DEV-016"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "在时间线与预览均完成后接通图节点选择，复用 DEV-015 的当前对象契约，串联发现/时间线 → 当前对象 → 预览 → 确认 → 执行 → 结果。",
+      "implementationGuide": "在时间线与预览均完成后接通图节点选择，复用 DEV-015 的当前对象契约，串联发现/时间线 → 当前对象 → 预览 → 确认 → 执行 → 结果。\n以真实工具在隔离环境生成独占缓存，验证常规一键规则、重建和再次开发；共享清理走独立确认。\n分列删除对象估算与系统可用量变化；并发写入导致零/负变化也如实展示。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/Views/CleanupView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupWorkflowTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=CleanupWorkflow",
+        "在隔离工具配置上执行端到端流程，复核清理前后系统采样及工具重建结果"
+      ],
+      "verificationCriteria": "FR-14 实际通过，至少一条外部规则可进入常规一键；用户可以完成完整闭环且理解动作后果。",
+      "failureHandling": "真实规则回归失败则停用该版本并回到 DEV-005，不能仅通过模拟数据验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-14",
+        "AT-11",
+        "AT-15"
+      ],
+      "estimate": "纳入 M4 的 5–8 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-018",
+      "name": "[CClean][DEV-018] 完成故障恢复、取消和清理对抗验收",
+      "stage": "M4",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-016",
+        "DEV-017"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "在删除前、删除后审计前、项间分别注入崩溃，重启核验已知结果且不自动续删。",
+      "implementationGuide": "在删除前、删除后审计前、项间分别注入崩溃，重启核验已知结果且不自动续删。\n覆盖审计磁盘满、规则变化、项目重活动、ADS 新增、锁定文件和路径替换。\n记录回收站/同盘隔离不释放容量的约束；不虚构撤销或恢复能力。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupRecovery.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupRecoveryTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/testing/cleanup-acceptance.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests --filter Category=CleanupRecovery",
+        "dotnet test tests/CClean.Tests --filter Category=Safety"
+      ],
+      "verificationCriteria": "AT-05～13、AT-19～20 相关项通过；缺失对象如实标记来源不明；保护集合内容保持不变。",
+      "failureHandling": "停用执行，修复故障点并复跑受影响用例；禁止自动继续中断清单。",
+      "requirementReferences": [
+        "FR-11",
+        "AT-12",
+        "AT-13"
+      ],
+      "estimate": "纳入 M4 的 5–8 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-019",
+      "name": "[CClean][DEV-019] 完成性能、低空间、权限和可访问性验收",
+      "stage": "M5",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-010",
+        "DEV-013",
+        "DEV-018"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "在记录硬件/负载的环境验证 100,000 文件/20 GiB 基准、更新 P95、空闲 CPU、内存和自身预算；大数据与低空间测试在隔离环境。",
+      "implementationGuide": "在记录硬件/负载的环境验证 100,000 文件/20 GiB 基准、更新 P95、空闲 CPU、内存和自身预算；大数据与低空间测试在隔离环境。\n普通用户、拒绝增强提权、中文长路径、高 DPI、键盘、空/错/缺口和离屏节流逐项验收。\n区分合成故障注入与真实限额 I/O 失败；扫描压力、稳态与 ETW 模式分别报告。\n正向 benchmark 显式使用非系统 NTFS 根和 24 GiB 实验预算，100,000 文件的逻辑数据共 20 GiB，并保留至少 10 GiB 可用量。全量 MVP 验收使用 MvpP0 分类，P1 权限实验独立报告。",
+      "relatedFiles": [
+        {
+          "path": "tests/CClean.Tests/PerformanceScenarios.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/testing/release-acceptance.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet test tests/CClean.Tests -c Release --filter Category=MvpP0",
+        "dotnet run --project tools/CClean.Poc -c Release -- --case benchmark --sandbox D:/CCleanLab/CCLEAN-20260917-DEV/benchmark --max-fixture-bytes 25769803776 --file-count 100000 --logical-bytes 21474836480 --reserve-free-bytes 10737418240 --output artifacts/benchmark.json",
+        "完成 AT-01～17、AT-19～21 的版本化验收报告"
+      ],
+      "verificationCriteria": "P0 与资源目标均有证据，未通过项不得标成完成；20 GiB benchmark 必须先配置独立实验卷，默认命令不得自动放宽 256 MiB 安全预算。",
+      "failureHandling": "按模块回退/降级并修复；若需要改变用户可见范围或指标，记录差异后再处理，不掩盖失败。",
+      "requirementReferences": [
+        "NFR-01",
+        "NFR-02",
+        "NFR-03",
+        "NFR-04",
+        "NFR-05",
+        "NFR-06",
+        "NFR-07"
+      ],
+      "estimate": "纳入 M5 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-020",
+      "name": "[CClean][DEV-020] 准备 Windows 测试安装包、用户文档和 GitHub 交付",
+      "stage": "M5",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-019"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "采用 Inno Setup 作为首版 Windows x64 内部测试安装包构建工具，版本在实施时固定；以 DEV-019 的 Release 构建产物打包，不引入应用运行时依赖。",
+      "implementationGuide": "采用 Inno Setup 作为首版 Windows x64 内部测试安装包构建工具，版本在实施时固定；以 DEV-019 的 Release 构建产物打包，不引入应用运行时依赖。\n验证安装、升级、启动、卸载与索引迁移；卸载绝不删除被监测目录。\n整理兼容版本、已知限制、签名状态、用户手册和发布记录；按会话授权同步源代码与文档到现有私有 GitHub。\n当前规划不授权公开发布或购买签名证书；先准备可审阅产物，实际对外发行另行处理。",
+      "relatedFiles": [
+        {
+          "path": "packaging/CClean.iss",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/user-guide.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/privacy.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "CHANGELOG.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet publish src/CClean.App -c Release -r win-x64 --self-contained true -o artifacts/publish/win-x64",
+        "在干净 Windows VM 验证安装/升级/卸载；确认产物哈希与源码提交对应"
+      ],
+      "verificationCriteria": "可安装、可卸载且不会影响监测数据根；构建产物可追溯，私有仓库与已验收提交一致；未签名状态如实标记。",
+      "failureHandling": "发行不通过不回滚用户项目；保留可用旧包与迁移记录，仅修复应用范围。",
+      "requirementReferences": [
+        "全部 P0",
+        "发行条件"
+      ],
+      "estimate": "纳入 M5 的 4–6 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-021",
+      "name": "[CClean][DEV-021] 验证并集成可选 ETW 进程归因",
+      "stage": "M6",
+      "priority": "P1",
+      "status": "deferred",
+      "optional": true,
+      "dependencies": [
+        "DEV-003",
+        "DEV-002",
+        "DEV-011"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "先验证 provider/session 权限、线程/文件映射、进程复用、长寿命句柄、异步和内存映射写、丢事件。",
+      "implementationGuide": "先验证 provider/session 权限、线程/文件映射、进程复用、长寿命句柄、异步和内存映射写、丢事件。\n普通受控写入正确关联覆盖目标 ≥99%，错误归因 0；特殊场景分别报告，未知保持未知。\n通过后才创建受限提权辅助进程并接入证据分类，限制当前用户 IPC；不保存无界 ETL，拒绝提权可回退普通模式。",
+      "relatedFiles": [
+        {
+          "path": "tools/CClean.Poc/EtwProbe.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Collector/CClean.Collector.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/EtwCorrelationTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/etw-poc.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case etw --sandbox artifacts/m0/sandbox --output artifacts/m0/etw.json",
+        "dotnet test tests/CClean.Tests --filter Category=Etw"
+      ],
+      "verificationCriteria": "G5 范围内归因正确、覆盖/丢事件可见；无权限时基础模式可用，不扩大清理权限。",
+      "failureHandling": "保留普通目录模式；不能把上下文关联重新标成进程证实。",
+      "requirementReferences": [
+        "FR-15",
+        "G5",
+        "AT-18"
+      ],
+      "estimate": "与 DEV-022 合计 5–8 人日",
+      "remoteTaskId": null
+    },
+    {
+      "id": "DEV-022",
+      "name": "[CClean][DEV-022] 验证并集成 USN 补扫恢复",
+      "stage": "M6",
+      "priority": "P1",
+      "status": "deferred",
+      "optional": true,
+      "dependencies": [
+        "DEV-003",
+        "DEV-002",
+        "DEV-009"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [],
+      "description": "只读现有 journal，持久化卷/JournalId/NextUsn，验证日志截断、卷变化、游标失效和权限拒绝。",
+      "implementationGuide": "只读现有 journal，持久化卷/JournalId/NextUsn，验证日志截断、卷变化、游标失效和权限拒绝。\n通过后作为 dirty 根定位和补扫增强，不把 USN 当 PID 或精确写流量来源。\n不为测试擅自创建、扩大或删除宿主卷 journal；破坏性日志场景使用隔离卷。",
+      "relatedFiles": [
+        {
+          "path": "tools/CClean.Poc/UsnProbe.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.Core/Monitoring/UsnCheckpoint.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/UsnRecoveryTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "docs/research/usn-poc.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "dotnet run --project tools/CClean.Poc -- --case usn --sandbox artifacts/m0/sandbox --output artifacts/m0/usn.json",
+        "dotnet test tests/CClean.Tests --filter Category=Usn"
+      ],
+      "verificationCriteria": "异常游标可识别并回退补扫，缺口保留；无权限和无 journal 时基础模式可用。",
+      "failureHandling": "禁用增强并执行范围内补扫，不修改系统 journal 兜底。",
+      "requirementReferences": [
+        "FR-16",
+        "AT-18"
+      ],
+      "estimate": "与 DEV-021 合计 5–8 人日",
+      "remoteTaskId": null
+    }
+  ]
+}
