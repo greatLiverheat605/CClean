@@ -1,4 +1,4 @@
-#define AppVersion "0.1.2"
+#define AppVersion "0.1.3"
 #ifndef PublishDir
   #define PublishDir "..\artifacts\publish\win-x64"
 #endif
@@ -15,7 +15,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.22000
 OutputDir=..\artifacts\packages
-OutputBaseFilename=CClean-0.1.2-internal-win-x64
+OutputBaseFilename=CClean-0.1.3-internal-win-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

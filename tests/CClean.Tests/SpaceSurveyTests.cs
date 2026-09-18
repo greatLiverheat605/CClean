@@ -52,6 +52,36 @@ public class SpaceSurveyTests
     }
 
     [Fact]
+    public void SystemFilesAndDirectoriesAreExcludedAndCannotBeSelectedDirectly()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-system-" + Guid.NewGuid().ToString("N")));
+        Fixture(box, "project/package.json", 10);
+        Fixture(box, "protected/child/package.json", 20);
+        Fixture(box, "system.dat", 30);
+        var protectedRoot = Path.Combine(box.RunDirectory, "protected");
+        var systemFile = Path.Combine(box.RunDirectory, "system.dat");
+        File.SetAttributes(protectedRoot, File.GetAttributes(protectedRoot) | FileAttributes.System);
+        File.SetAttributes(systemFile, FileAttributes.System);
+        try
+        {
+            using var survey = new SpaceSurvey(box.RunDirectory);
+            var result = survey.Next(default);
+            Assert.Equal(10, result.Bytes);
+            Assert.Equal(1, result.Files);
+            Assert.Equal(2, result.Skipped);
+            Assert.DoesNotContain(result.Folders, f => f.Path.StartsWith(protectedRoot, StringComparison.OrdinalIgnoreCase));
+            Assert.Throws<ExperimentRefusedException>(() => new SpaceSurvey(Path.Combine(protectedRoot, "child")));
+            Assert.Throws<ExperimentRefusedException>(() => new SpaceSurvey(Environment.SystemDirectory));
+            Assert.True(File.Exists(systemFile));
+        }
+        finally
+        {
+            File.SetAttributes(protectedRoot, FileAttributes.Directory);
+            File.SetAttributes(systemFile, FileAttributes.Normal);
+        }
+    }
+
+    [Fact]
     public void VersionHintDoesNotMergeUnrelatedParentsOrPlainNames()
     {
         Assert.NotEqual(SpaceSurvey.VersionFamily("C:/one/app-v1"), SpaceSurvey.VersionFamily("C:/two/app-v2"));

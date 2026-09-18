@@ -23,7 +23,7 @@
   <TextBlock Text="Windows 会展示清理清单并让你确认。请选择缓存 / 临时文件，保留下载和回收站中仍需要的内容。" Foreground="{DynamicResource Muted}" FontSize="12" Margin="4,8,0,18"/>
   <DockPanel Margin="0,0,0,10">
    <TextBlock DockPanel.Dock="Left" Text="空间盘点" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
-   <TextBlock Text="无需先登记项目 · 只读扫描" Foreground="{DynamicResource Muted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+   <TextBlock Text="只读扫描 · 已排除系统文件" Foreground="{DynamicResource Muted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
   </DockPanel>
   <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBox x:Name="ScanRoot" AutomationProperties.Name="盘点目录" Margin="0,0,8,0"/>
@@ -32,7 +32,7 @@
    <Button Grid.Column="3" x:Name="CancelButton" Content="停止" IsEnabled="False" Click="Cancel" Margin="0"/>
   </Grid>
   <Grid Margin="0,4,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBlock x:Name="ScanStatus" Text="点击开始盘点，可发现 C 盘目录和项目，不会自动启用持续监测或删除。" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" Margin="0,0,12,0"/>
+   <TextBlock x:Name="ScanStatus" Text="点击开始盘点，发现项目和用户目录；系统文件与系统目录不列出。" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" Margin="0,0,12,0"/>
    <ComboBox Grid.Column="1" x:Name="Filter" SelectedIndex="0" MinWidth="170" SelectionChanged="FilterChanged" AutomationProperties.Name="盘点分类">
     <ComboBoxItem Content="空间占用排行"/><ComboBoxItem Content="项目与版本副本"/><ComboBoxItem Content="常见缓存"/>
    </ComboBox>

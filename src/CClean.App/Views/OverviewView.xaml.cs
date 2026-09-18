@@ -98,7 +98,7 @@ public partial class OverviewView : UserControl
             .Select(f => f with { Category = versions.Contains(f.VersionFamily) ? "疑似版本副本" : f.Category,
                 Share = result.Bytes == 0 ? 0 : 100d * f.Bytes / result.Bytes }).ToArray();
         var state = result.Limited ? "达到目录上限，请选更小范围" : result.HasMore ? "部分结果 · 可继续" : "本轮结束";
-        ScanStatus.Text = $"{state}：{result.Files:N0} 文件，已读 {IndexedFile.FormatBytes(result.Bytes)}，项目 {result.Folders.Count(f => f.Project)} 个；跳过 / 不可读 {result.Skipped:N0} 项。最多显示 200 行。";
+        ScanStatus.Text = $"{state}：{result.Files:N0} 文件，已读 {IndexedFile.FormatBytes(result.Bytes)}，项目 {result.Folders.Count(f => f.Project)} 个；跳过 / 不可读 {result.Skipped:N0} 项（含系统范围）。最多显示 200 行；统计不含系统文件。";
         SetSelection();
     }
     private void SelectionChanged(object sender, SelectionChangedEventArgs e) => SetSelection();

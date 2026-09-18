@@ -39,6 +39,7 @@ public sealed class SpaceSurvey : IDisposable
     public SpaceSurvey(string root)
     {
         Root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        if (IsSystemPath(Root, checkAncestors: true)) throw new ExperimentRefusedException("系统文件和系统目录不参与空间盘点，请选择项目或用户目录。", 3);
         using var lease = new DirectoryLease(Root);
         cacheRoots = new(CommonCacheRoots().Select(p => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p))), StringComparer.OrdinalIgnoreCase);
         folders.Add(Root, new(Root, null, false));
@@ -79,6 +80,7 @@ public sealed class SpaceSurvey : IDisposable
                     {
                         var path = entries.Current;
                         var attributes = File.GetAttributes(path);
+                        if ((attributes.HasFlag(FileAttributes.System) && !IsUserCacheContainer(path)) || IsSystemPath(path)) { skipped++; continue; }
                         // Do not traverse links or hydrate cloud placeholders to calculate their size.
                         if (((int)attributes & (0x400 | 0x1000 | 0x40000 | 0x400000)) != 0) { skipped++; continue; }
                         var name = Path.GetFileName(path);
@@ -87,7 +89,7 @@ public sealed class SpaceSurvey : IDisposable
                         if (attributes.HasFlag(FileAttributes.Directory))
                         {
                             if (folders.Count >= 50_000) { limited = true; break; }
-                            folders.Add(path, new(path, current, parent.Generated || GeneratedNames.Contains(name) || cacheRoots.Contains(path) || IsInstalledSystemFolder(path)));
+                            folders.Add(path, new(path, current, parent.Generated || GeneratedNames.Contains(name) || cacheRoots.Contains(path)));
                             pending.Enqueue(path);
                         }
                         else
@@ -107,14 +109,32 @@ public sealed class SpaceSurvey : IDisposable
         return Snapshot();
     }
 
-    public SpaceSurveyResult Snapshot() => new(folders.Values.Select(f => new SpaceFolder(f.Path, f.Bytes, f.Files, f.Project,
+    public SpaceSurveyResult Snapshot() => new(folders.Values.Where(f => !IsUserCacheContainer(f.Path)).Select(f => new SpaceFolder(f.Path, f.Bytes, f.Files, f.Project,
         cacheRoots.Contains(f.Path) ? "缓存 / 临时文件" : f.Project ? "项目" : f.Generated ? "工具 / 临时目录" : "目录",
         f.Project ? VersionFamily(f.Path) : "")).ToArray(), files, bytes, skipped,
         !limited && (entries is not null || pending.Count > 0), limited);
 
-    private static bool IsInstalledSystemFolder(string path) => new[]
-        { Environment.SpecialFolder.Windows, Environment.SpecialFolder.ProgramFiles, Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.CommonApplicationData }
-        .Select(Environment.GetFolderPath).Where(p => p.Length > 0).Any(p => p.Equals(path, StringComparison.OrdinalIgnoreCase));
+    private static bool IsSystemPath(string path, bool checkAncestors = false)
+    {
+        var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        var roots = new[] { Environment.SpecialFolder.Windows, Environment.SpecialFolder.ProgramFiles,
+            Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.CommonApplicationData }
+            .Select(Environment.GetFolderPath).Where(p => p.Length > 0);
+        var drive = Path.GetPathRoot(full)!;
+        roots = roots.Concat(new[] { "System Volume Information", "$Recycle.Bin", "Recovery", "Boot", "EFI",
+            "$WinREAgent", "$WINDOWS.~BT", "$WINDOWS.~WS", "Windows.old" }.Select(n => Path.Combine(drive, n)));
+        if (roots.Any(p => full.Equals(p, StringComparison.OrdinalIgnoreCase) ||
+            full.StartsWith(Path.TrimEndingDirectorySeparator(p) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))) return true;
+        // Also reject direct selection of a child beneath a system-attributed directory.
+        for (var ancestor = checkAncestors ? full : null; ancestor is not null && !ancestor.Equals(drive, StringComparison.OrdinalIgnoreCase);
+            ancestor = Path.GetDirectoryName(ancestor))
+            if (File.GetAttributes(ancestor).HasFlag(FileAttributes.System) && !IsUserCacheContainer(ancestor)) return true;
+        return false;
+    }
+
+    // Windows can mark LocalAppData as System; traverse this container for user caches, but never list it.
+    private static bool IsUserCacheContainer(string path) => path.Equals(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), StringComparison.OrdinalIgnoreCase);
 
     private static bool IsProjectMarker(string name) => name.Equals(".git", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("package.json", StringComparison.OrdinalIgnoreCase) || name.Equals("pyproject.toml", StringComparison.OrdinalIgnoreCase) ||
