@@ -1209,12 +1209,19 @@
     },
     "storageExperience": {
       "version": "0.1.2",
-      "status": "implementation_and_ui_passed_packaging",
+      "status": "passed_installed_awaiting_user_acceptance",
       "subplan": "2026-09-17_cclean-development/sub-024-storage-home.md",
       "evidence": "docs/testing/storage-home-acceptance.md",
       "testsPassed": 49,
       "realDumpDeletion": "not_executed",
-      "versionFolders": "name_hints_only_source_preserved"
+      "versionFolders": "name_hints_only_source_preserved",
+      "packageCommit": "f46da283cdef8462cb19459081d68f2723c5bfad",
+      "receipt": "artifacts/storage-home-delivery.json",
+      "ciRuns": [
+        35312313742,
+        35312310833
+      ],
+      "runtimeHashesPreserved": true
     }
   }
 }

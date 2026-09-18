@@ -17,7 +17,7 @@
       "status": "in_progress"
     }
   ],
-  "validationSummary": "Original P0 statuses retained; 0.1.2 storage UI and guarded dump rule passed local checks; 49 tests; real dump deletion not executed; no release approval",
+  "validationSummary": "Original P0 statuses retained; 0.1.2 installed and started with runtime data preserved; 49 tests and two Windows CI runs passed; real dump deletion not executed; awaiting user acceptance; no release approval",
   "personalUseEvidence": "docs/testing/personal-acceptance.md",
   "storageExperienceEvidence": "docs/testing/storage-home-acceptance.md"
 }
