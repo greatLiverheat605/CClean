@@ -1197,6 +1197,15 @@
     "observation": "passed_real_project_ui_pause_resume",
     "stability": "passed_903s_local_816_files",
     "cleanupUi": "pending_positive_flow",
-    "nextAction": "正向清理 UI 与多日日常稳定性补验；保留原发行失败"
+    "nextAction": "正向清理 UI 与多日日常稳定性补验；保留原发行失败",
+    "delivery": {
+      "status": "passed_installed_and_started",
+      "packageCommit": "dc9288bcd99b32db25df9da3c56cab964e642d44",
+      "receipt": "artifacts/personal-final-delivery.json",
+      "ciRuns": [
+        35308267541,
+        35308264368
+      ]
+    }
   }
 }
