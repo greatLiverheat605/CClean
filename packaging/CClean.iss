@@ -30,6 +30,7 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Source: "..\docs\user-guide.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "..\docs\privacy.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "..\docs\testing\release-acceptance.md"; DestDir: "{app}\docs\testing"; Flags: ignoreversion
+Source: "..\docs\testing\personal-acceptance.md"; DestDir: "{app}\docs\testing"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\CClean Internal"; Filename: "{app}\CClean.App.exe"

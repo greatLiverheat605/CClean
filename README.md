@@ -4,7 +4,7 @@
 
 按 **项目 → Agent 会话 → 文件变化** 展示类似 Git 分支的时间线，帮助开发者理解 C 盘空间增长的来源，并通过可预览、可审计的清理流程释放空间。
 
-> 当前阶段：0.1.0 内部测试实现，已接通登记、索引、手动会话、时间线、预览与受控清理。MvpP0 43 项测试通过，仍有实际 DPI、限额 I/O 和干净 VM 验收缺项，不能视为正式发行。详见 [发行验收](docs/testing/release-acceptance.md) 与 [使用说明](docs/user-guide.md)。
+> 当前阶段：0.1.1 本机个人观察版，已验证真实项目观察、重启恢复、安装升级与卸载保留数据。MvpP0 44 项测试及真实删除后审计满盘验证通过；完整清理 UI 正向流程、大样本内存与部分发行验收仍未通过。默认无启用清理规则。详见 [个人验收](docs/testing/personal-acceptance.md)、[发行验收](docs/testing/release-acceptance.md) 与 [使用说明](docs/user-guide.md)。
 
 ## 已确认的产品方向
 

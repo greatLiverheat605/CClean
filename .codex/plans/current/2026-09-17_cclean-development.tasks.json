@@ -1189,10 +1189,14 @@
   ],
   "personalUse": {
     "authorizedAt": "2026-09-18",
-    "status": "in_progress",
+    "status": "observation_ready_cleanup_pending",
     "evidence": "docs/testing/personal-acceptance.md",
     "scope": "本机个人日常观察与安全清理；发行跨环境验收后移，原性能失败保留",
     "auditCommitFailure": "passed_real_sqlite_full",
-    "installation": "in_progress"
+    "installation": "passed_local_upgrade_uninstall_reinstall",
+    "observation": "passed_real_project_ui_pause_resume",
+    "stability": "passed_903s_local_816_files",
+    "cleanupUi": "pending_positive_flow",
+    "nextAction": "正向清理 UI 与多日日常稳定性补验；保留原发行失败"
   }
 }

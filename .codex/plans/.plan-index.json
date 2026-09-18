@@ -17,5 +17,6 @@
       "status": "in_progress"
     }
   ],
-  "validationSummary": "15 P0 passed; 4 pending_validation; DEV-019 failed on memory; draft PR #1; no release approval"
+  "validationSummary": "15 P0 passed; 4 pending_validation; DEV-019 memory failed; personal observation/install and 903s idle passed; cleanup UI positive pending; no release approval",
+  "personalUseEvidence": "docs/testing/personal-acceptance.md"
 }

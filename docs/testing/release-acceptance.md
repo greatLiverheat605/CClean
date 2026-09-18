@@ -61,3 +61,7 @@ Inno Setup 固定 7.1.0，官方 GitHub jrsoftware/issrc 下载，Authenticode V
 独立动态 VHDX 4 GiB，映射核验为新增 Microsoft 虚拟磁盘、无原分区；NTFS 专用 label/计划标记。宿主 D 盘显式 5 GiB 实验预算，始终保留至少 10 GiB。产品审计清单和 SpaceBefore 已落盘后，受控 filler 写到 Win32 112，独立 SQLite 写入返回 13；产品下一项 Started 前由真实剩余空间预算守卫拒绝，候选保留，重启 Interrupted。filler 仅自身 DeleteOnClose，实验卷已卸载，Z: 已不存在。
 
 该实验没有把产品内部 SQLite 写入错误伪装成已测：产品停止于预算守卫。删除后审计提交恰好失败的真实 I/O 竞态仍待补。报告 `artifacts/product-quota-20260917T123747353-1dac2fc1bfa54dd49e0084622e5f7cda/result.json`；探针为 `--case product-quota`，缺少专用卷和显式预算会拒绝运行。
+
+## 2026-09-18 补验（0.1.1）
+
+以上为 0.1.0 历史记录，原性能失败保留。0.1.1 新增真实删除后审计 SQLite Error 13 验证，已确认后续对象保留、重启不伪造 Deleted；44 项 MvpP0 通过。本机安装、升级、卸载保留数据及重装恢复已通过。完整清理 UI 正向与跨环境发行验收仍待验，详情见 [个人验收](personal-acceptance.md)。
