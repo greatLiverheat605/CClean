@@ -19,3 +19,5 @@ MCP 不可用，pending_unavailable。原发行失败保留；本轮不得自动
 2026-09-18 / 0.1.3：按用户要求，空间盘点不列出系统文件与系统目录，并拒绝直接选择系统子目录。排除 Windows、Program Files、ProgramData、恢复/引导/回收站范围以及系统属性对象。仅统计允许盘点范围，系统临时清理由 Windows 工具管理。
 
 0.1.3 自检：50 项 MvpP0 全通过，Release 构建零警告/零错误，包来源 24d2cd22039b51edb9aaaa07ceab6f6a5f14cbf5。静默安装命令被自动审批以 blocked by policy 拒绝，未执行；本机仍为 0.1.2，旧版已正常退出。0.1.3 待用户手动安装及 UI 验收，未删除真实数据。
+
+用户明确要求安装新版后，重新执行 0.1.3 安装成功（退出码 0）。已核对安装包 SHA256、安装版本 0.1.3.0 与来源 24d2cd2，升级前后运行数据 SHA256 完全一致；已启动安装版。回执 artifacts/system-exclusion-delivery.json。此前安装拦截已解除，未执行清理。
