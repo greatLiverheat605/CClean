@@ -7,7 +7,7 @@ public sealed record ProtectionDecision(bool Eligible, string Category, string R
 
 public static class ProtectionPolicy
 {
-    public const int Version = 1;
+    public const int Version = 2;
     public static readonly TimeSpan MinimumAge = TimeSpan.FromMinutes(30);
     private static readonly HashSet<string> sensitiveParts = new(StringComparer.OrdinalIgnoreCase)
         { ".git", ".codex", ".claude", ".zcode", ".ssh", ".aws", ".azure", ".gnupg", "credentials", "sessions", "checkpoints", "memories" };
@@ -45,12 +45,18 @@ public static class ProtectionPolicy
             var matching = rules.Where(s => Contains(s.Root, file.Path)).ToArray();
             if (matching.Length != 1) return Deny("未知来源", "未匹配唯一已配置规则");
             var scope = matching[0];
-            if (scope.RuleId != CacheRule.NpmContent.Id || scope.RuleVersion != CacheRule.NpmContent.Version)
+            var crashDump = scope.RuleId == CrashDumpRule.Id && scope.RuleVersion == CrashDumpRule.Version;
+            if (!crashDump && (scope.RuleId != CacheRule.NpmContent.Id || scope.RuleVersion != CacheRule.NpmContent.Version))
                 return Deny("未知规则", "规则版本未经验证");
             var related = activity.Scopes.Where(s => Contains(s.Root, file.Path)).ToArray();
             if (related.Length == 0 || related.Any(s => !s.ObservationKnown)) return Deny("活动未知", "没有完整的当前活动观察");
             if (related.Any(s => s.Active)) return Deny("活动保护", "活动项目、会话或近期写入");
             if (DateTime.FromFileTimeUtc(file.ModifiedTime) > now.UtcDateTime - MinimumAge) return Deny("近期变化", "至少保留 30 分钟，未来时间也排除");
+            if (crashDump)
+            {
+                var exclusion = CrashDumpRule.Exclude(scope, file, now);
+                return exclusion is not null ? Deny("转储保护", exclusion) : new(true, "旧故障转储", "超过 48 小时；保留最新转储，删除后失去该次故障诊断内容", scope);
+            }
             var reason = CacheRule.NpmContent.Exclude(new(scope.Root, scope.ToolVersion, scope.Enabled, scope.Exclusive, true, false, protectedRoots), file);
             return reason is not null ? Deny("规则排除", reason) : new(true, "独占可重建缓存", "npm 11.19.0 已验证规则；仍须预览与逐项执行复核", scope);
         }

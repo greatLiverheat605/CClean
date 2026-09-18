@@ -1,4 +1,4 @@
-#define AppVersion "0.1.1"
+#define AppVersion "0.1.2"
 #ifndef PublishDir
   #define PublishDir "..\artifacts\publish\win-x64"
 #endif
@@ -15,7 +15,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.22000
 OutputDir=..\artifacts\packages
-OutputBaseFilename=CClean-0.1.1-internal-win-x64
+OutputBaseFilename=CClean-0.1.2-internal-win-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -31,6 +31,7 @@ Source: "..\docs\user-guide.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "..\docs\privacy.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "..\docs\testing\release-acceptance.md"; DestDir: "{app}\docs\testing"; Flags: ignoreversion
 Source: "..\docs\testing\personal-acceptance.md"; DestDir: "{app}\docs\testing"; Flags: ignoreversion
+Source: "..\docs\testing\storage-home-acceptance.md"; DestDir: "{app}\docs\testing"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\CClean Internal"; Filename: "{app}\CClean.App.exe"

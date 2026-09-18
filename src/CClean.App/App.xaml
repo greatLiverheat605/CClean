@@ -9,6 +9,7 @@
         <SolidColorBrush x:Key="Ink" Color="#17212B"/>
         <SolidColorBrush x:Key="Muted" Color="#526170"/>
         <SolidColorBrush x:Key="Accent" Color="#245BA8"/>
+        <SolidColorBrush x:Key="OnAccent" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="Line" Color="#D5DCE4"/>
         <Style TargetType="Window">
             <Setter Property="FontFamily" Value="Microsoft YaHei UI"/>

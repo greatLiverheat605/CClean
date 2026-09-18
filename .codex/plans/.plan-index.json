@@ -17,6 +17,7 @@
       "status": "in_progress"
     }
   ],
-  "validationSummary": "15 P0 passed; 4 pending_validation; DEV-019 memory failed; personal observation/install and 903s idle passed; cleanup UI positive pending; no release approval",
-  "personalUseEvidence": "docs/testing/personal-acceptance.md"
+  "validationSummary": "Original P0 statuses retained; 0.1.2 storage UI and guarded dump rule passed local checks; 49 tests; real dump deletion not executed; no release approval",
+  "personalUseEvidence": "docs/testing/personal-acceptance.md",
+  "storageExperienceEvidence": "docs/testing/storage-home-acceptance.md"
 }

@@ -28,11 +28,11 @@ public sealed class WorkspaceViewModel : IDisposable
     public Task<Core.Cleanup.CleanupResult>? CleanupTask { get; private set; }
     public bool CleanupRunning => CleanupTask is { IsCompleted: false };
     public Core.Cleanup.CleanupJournal OpenCleanupJournal() => cleanupJournal ??= new(DataDirectory);
-    public Task<Core.Cleanup.CleanupResult> ExecuteCleanup(Core.Cleanup.CleanupPlan plan)
+    public Task<Core.Cleanup.CleanupResult> ExecuteCleanup(Core.Cleanup.CleanupPlan plan, Func<Task<Core.Cleanup.CleanupContext>>? context = null)
     {
         if (CleanupRunning) throw new InvalidOperationException("已有清理任务执行中。");
         cleanupExecutor ??= new(OpenCleanupJournal()); cleanupCancellation?.Dispose(); cleanupCancellation = new();
-        return CleanupTask = cleanupExecutor.ExecuteApproved(plan, CleanupContext, cleanupCancellation.Token);
+        return CleanupTask = cleanupExecutor.ExecuteApproved(plan, context ?? CleanupContext, cleanupCancellation.Token);
     }
     public void CancelCleanup() => cleanupCancellation?.Cancel();
     public event Action? Indexed;

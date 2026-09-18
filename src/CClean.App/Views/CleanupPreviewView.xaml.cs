@@ -14,9 +14,10 @@ public partial class CleanupPreviewView : UserControl
     private CancellationTokenSource? cancellation;
     private CleanupPlan? plan;
     private bool busy;
+    private Func<Task<CleanupContext>> getContext;
     public CleanupPreviewView(WorkspaceViewModel workspace)
     {
-        InitializeComponent(); this.workspace = workspace;
+        InitializeComponent(); this.workspace = workspace; getContext = workspace.CleanupContext;
         Loaded += (_, _) => { RootChoice.ItemsSource = workspace.Projects; };
         Unloaded += (_, _) => cancellation?.Cancel();
     }
@@ -33,20 +34,39 @@ public partial class CleanupPreviewView : UserControl
     }
     private async void PreviewRules(object sender, RoutedEventArgs e) => await Preview(null);
     private void CancelPreview(object sender, RoutedEventArgs e) { if (workspace.CleanupRunning) return; cancellation?.Cancel(); plan = null; ExecuteButton.IsEnabled = false; Items.ItemsSource = null; Summary.Text = "已取消预览；没有删除文件。"; }
-    public async Task Preview(string[]? paths)
+    private async void PreviewDumps(object sender, RoutedEventArgs e) => await PreviewCrashDumps();
+    public async Task PreviewCrashDumps()
     {
         if (busy || workspace.CleanupRunning) return;
-        busy = true; plan = null; ExecuteButton.IsEnabled = false; cancellation = new(); var token = cancellation.Token;
+        try
+        {
+            var paths = await Task.Run(CrashDumpRule.GetPaths);
+            await Preview(paths, () =>
+            {
+                var protectedRoots = workspace.Projects.Select(p => p.Root).Append(workspace.DataDirectory).ToArray();
+                return Task.Run(() => CrashDumpRule.Context(protectedRoots));
+            });
+        }
+        catch (Exception error) { plan = null; ExecuteButton.IsEnabled = false; Summary.Text = "转储预览不可用：" + error.Message; }
+    }
+    public async Task Preview(string[]? paths, Func<Task<CleanupContext>>? context = null)
+    {
+        if (busy || workspace.CleanupRunning) return;
+        PreviewIntro.Text = context is null ? "独占 npm 缓存：清理后可能需要联网重建；规则默认关闭。"
+            : "旧 WSL 故障转储：保留最新及最近 48 小时文件。只删除诊断转储，不清理项目、发行版或开发依赖。";
+        NpmSetup.Visibility = PreviewRulesButton.Visibility = context is null ? Visibility.Visible : Visibility.Collapsed;
+        DumpPreviewButton.Visibility = context is null ? Visibility.Collapsed : Visibility.Visible;
+        busy = true; getContext = context ?? workspace.CleanupContext; plan = null; ExecuteButton.IsEnabled = false; cancellation = new(); var token = cancellation.Token;
         Items.ItemsSource = null; Summary.Text = "正在复核当前对象与消费者，尚未删除文件…";
         try
         {
-            var context = await workspace.CleanupContext();
+            var current = await getContext();
             plan = await Task.Run(() =>
             {
                 if (paths is null)
                 {
                     var selected = new List<string>(); var extra = new List<Core.Sessions.ActivityScope>();
-                    foreach (var rule in context.Rules.Where(r => r.Enabled))
+                    foreach (var rule in current.Rules.Where(r => r.Enabled))
                     {
                         token.ThrowIfCancellationRequested();
                         var scan = DirectoryScanner.Scan(rule.Root, token);
@@ -54,10 +74,10 @@ public partial class CleanupPreviewView : UserControl
                         if (scan.Gaps.Count > 0) extra.Add(new(rule.Root, false, false, "批量扫描存在缺口"));
                         if (selected.Count > 1000) break;
                     }
-                    context = context with { Activity = context.Activity with { Scopes = context.Activity.Scopes.Concat(extra).ToArray() } };
+                    current = current with { Activity = current.Activity with { Scopes = current.Activity.Scopes.Concat(extra).ToArray() } };
                     paths = selected.ToArray();
                 }
-                return CleanupPlanner.Preview(paths, context, token);
+                return CleanupPlanner.Preview(paths, current, token);
             }, token);
             token.ThrowIfCancellationRequested();
             Items.ItemsSource = plan.Items;
@@ -74,13 +94,16 @@ public partial class CleanupPreviewView : UserControl
     {
         if (plan is null || busy || workspace.CleanupRunning) return;
         var approved = plan;
-        if (MessageBox.Show(Window.GetWindow(this), $"永久删除本清单中 {approved.EligibleCount} 个候选文件，分配估算 {IndexedFile.FormatBytes(approved.EstimatedBytes)}。\n\n不进入回收站；可能需要联网重建，离线安装可能失败。清单外与排除项不执行。\n\n确认执行清单 {approved.Id}？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        var consequence = approved.Items.Any(i => i.Decision.Scope?.RuleId == CrashDumpRule.Id)
+            ? "仅清理旧故障转储，保留最新及最近 48 小时文件；旧故障诊断内容删除后无法恢复。"
+            : "可能需要联网重建，离线安装可能失败。";
+        if (MessageBox.Show(Window.GetWindow(this), $"永久删除本清单中 {approved.EligibleCount} 个候选文件，分配估算 {IndexedFile.FormatBytes(approved.EstimatedBytes)}。\n\n不进入回收站；{consequence}清单外与排除项不执行。\n\n确认执行清单 {approved.Id}？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
         ExecuteButton.IsEnabled = false; busy = true;
         try
         {
             var volumes = approved.Items.Where(i => i.Decision.Eligible).Select(i => System.IO.Path.GetPathRoot(i.Path)!).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var before = await Task.Run(() => volumes.ToDictionary(v => v, VolumeSpaceReader.Read));
-            var result = await workspace.ExecuteCleanup(approved);
+            var result = await workspace.ExecuteCleanup(approved, getContext);
             var after = await Task.Run(() => volumes.ToDictionary(v => v, VolumeSpaceReader.Read));
             Summary.Text = result.Message;
             Details.Text = $"{result.State}；已标记对象分配估算 {IndexedFile.FormatBytes(result.EstimatedDeletedBytes)}。\n" + string.Join("\n", volumes.Select(v => $"{v} 系统可用量变化 {(decimal)after[v].UserAvailableBytes - before[v].UserAvailableBytes:+#,##0;-#,##0;0} B（含其他进程影响，不能全归因于本次清理）。"));
