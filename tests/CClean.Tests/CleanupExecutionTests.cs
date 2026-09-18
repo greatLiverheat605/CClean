@@ -9,6 +9,23 @@ namespace CClean.Tests;
 public class CleanupExecutionTests
 {
     [Fact]
+    public async Task FailedResultCommitPreservesNextFileAndDoesNotInventCommittedDeletion()
+    {
+        using var fixture = new Fixture(); var a = fixture.File("a"); var b = fixture.File("b");
+        var plan = CleanupPlanner.Preview([a, b], fixture.Context);
+        using (var journal = new CleanupJournal(fixture.Data))
+        {
+            journal.BeforeRecordWrite = state => { if (state == "Deleted") throw new IOException("controlled result commit failure"); };
+            var result = await new CleanupExecutor(journal).ExecuteApproved(plan, () => Task.FromResult(fixture.Context));
+            Assert.Equal("Failed", result.State); Assert.False(File.Exists(a)); Assert.True(File.Exists(b));
+            Assert.DoesNotContain(journal.Events(plan.Id.ToString()), e => e.State == "Deleted" || e.Path == b);
+        }
+        using var reopened = new CleanupJournal(fixture.Data);
+        Assert.All(CleanupRecovery.Inspect(reopened, plan.Id.ToString()), e => Assert.Equal("RecoveryObservation", e.State));
+        Assert.True(File.Exists(b));
+    }
+
+    [Fact]
     public async Task OnlyApprovedUnchangedUnlockedObjectsAreDeletedAndPlanCannotReplay()
     {
         using var fixture = new Fixture();

@@ -10,6 +10,8 @@ public sealed record CleanupEvent(string Path, string State, string Reason, stri
 
 public sealed class CleanupJournal : IDisposable
 {
+    // Probe-only barrier after the budget check; production never installs it.
+    internal Action<string>? BeforeRecordWrite { get; set; }
     private readonly object sync = new();
     private readonly string root;
     private readonly DirectoryLease directory;
@@ -61,6 +63,7 @@ public sealed class CleanupJournal : IDisposable
         lock (sync)
         {
             EnsureBudget(65536 + path.Length * 4L);
+            BeforeRecordWrite?.Invoke(state);
             Execute("INSERT INTO events(run,path,state,reason,time) VALUES($run,$path,$state,$reason,$time)", ("$run", run.ToString()), ("$path", path), ("$state", state), ("$reason", reason), ("$time", DateTimeOffset.UtcNow.ToString("O")));
         }
     }

@@ -976,7 +976,7 @@
       "estimate": "纳入 M4 的 5–8 人日",
       "remoteTaskId": null,
       "evidence": "docs/testing/cleanup-acceptance.md",
-      "validationNote": "三阶段真实退出、对抗测试及真实满盘下产品预算停止通过；删除后审计写入竞态和完整 UI 待验。"
+      "validationNote": "2026-09-18 已补真实删除后审计 SQLite FULL 13：下一对象保留、重启 Interrupted、无伪造提交。完整 UI 仍待验。"
     },
     {
       "id": "DEV-019",
@@ -1186,5 +1186,13 @@
       "estimate": "与 DEV-021 合计 5–8 人日",
       "remoteTaskId": null
     }
-  ]
+  ],
+  "personalUse": {
+    "authorizedAt": "2026-09-18",
+    "status": "in_progress",
+    "evidence": "docs/testing/personal-acceptance.md",
+    "scope": "本机个人日常观察与安全清理；发行跨环境验收后移，原性能失败保留",
+    "auditCommitFailure": "passed_real_sqlite_full",
+    "installation": "in_progress"
+  }
 }

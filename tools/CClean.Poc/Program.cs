@@ -32,7 +32,7 @@ try
         reportDirectory = Path.Combine(Path.GetDirectoryName(output)!, Path.GetFileNameWithoutExtension(output) + "-" + runId);
         Directory.CreateDirectory(reportDirectory);
     }
-    if (caseName is not ("environment" or "metadata" or "watcher" or "watcher-overflow" or "deletion-safety" or "cache-rule" or "cache-product" or "cleanup-crashes" or "cleanup-crash-child" or "product-quota" or "storage-budget" or "index-scale" or "index-rescan" or "benchmark" or "timeline-fixture")) throw new ExperimentRefusedException($"Case not implemented: {caseName}.", 2);
+    if (caseName is not ("environment" or "metadata" or "watcher" or "watcher-overflow" or "deletion-safety" or "cache-rule" or "cache-product" or "cleanup-crashes" or "cleanup-crash-child" or "product-quota" or "product-audit-full" or "storage-budget" or "index-scale" or "index-rescan" or "benchmark" or "timeline-fixture")) throw new ExperimentRefusedException($"Case not implemented: {caseName}.", 2);
     var budget = Number("--max-fixture-bytes", ExperimentSandbox.DefaultBudget);
     var reserve = Number("--reserve-free-bytes", ExperimentSandbox.DefaultReserve);
     var count = Number("--file-count", 1);
@@ -51,7 +51,7 @@ try
     using var sandbox = new ExperimentSandbox(sandboxPath, budget, reserve);
     if (caseName == "cleanup-crash-child") CClean.Poc.RecoveryProbe.Child(sandbox, Required("--sample-root"), Required("--checkpoint"));
     else if (caseName == "cleanup-crashes") CClean.Poc.RecoveryProbe.Run(sandbox, checks);
-    else if (caseName == "product-quota") CClean.Poc.ProductQuotaProbe.Run(sandbox, Required("--quota-root"), checks);
+    else if (caseName is "product-quota" or "product-audit-full") CClean.Poc.ProductQuotaProbe.Run(sandbox, Required("--quota-root"), checks, caseName == "product-audit-full");
     else if (caseName == "timeline-fixture")
     {
         CClean.Poc.TimelineProbe.Run(sandbox, checks);
