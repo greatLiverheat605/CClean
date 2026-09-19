@@ -128,12 +128,12 @@ public sealed class ProjectDiscovery : IDisposable
 
     internal static bool IsExcludedPath(string path, bool checkAncestors = false)
     {
-        if (SpaceSurvey.IsSystemPath(path, checkAncestors)) return true;
         var full = Path.GetFullPath(path);
         if (full.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(ExcludedNames.Contains)) return true;
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return local.Length > 0 && new[] { "Programs", "Packages", "Microsoft/WindowsApps" }
-            .Any(p => ProtectionPolicy.Contains(Path.Combine(local, p), full));
+        if (local.Length > 0 && new[] { "Programs", "Packages", "Microsoft/WindowsApps" }
+            .Any(p => ProtectionPolicy.Contains(Path.Combine(local, p), full))) return true;
+        return SpaceSurvey.IsSystemPath(full, checkAncestors);
     }
 
     public void Dispose() { disposed = true; entries?.Dispose(); entries = null; children.Clear(); pending.Clear(); }

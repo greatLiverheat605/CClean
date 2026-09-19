@@ -62,6 +62,10 @@ public class ProjectDiscoveryTests
             Assert.Throws<ExperimentRefusedException>(() => new ProjectDiscovery(Environment.SystemDirectory));
             var install = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs");
             Assert.Throws<ExperimentRefusedException>(() => new ProjectDiscovery(install));
+            // Exclusion is a path policy even when a clean machine has no installation directory yet.
+            var absentInstall = Path.Combine(install, "cclean-missing-" + Guid.NewGuid().ToString("N"));
+            Assert.False(Directory.Exists(absentInstall));
+            Assert.Throws<ExperimentRefusedException>(() => new ProjectDiscovery(absentInstall));
             Assert.Empty(ProjectCatalog.Build([], [], [system, dependency, linked, install, Environment.SystemDirectory]));
             Assert.True(File.Exists(Path.Combine(system, "package.json")));
         }
