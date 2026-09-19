@@ -1253,6 +1253,20 @@
         35442741454
       ],
       "runtimePreserved": true
+    },
+    "projectWorkbench": {
+      "version": "0.1.5",
+      "status": "passed_installed_awaiting_user_acceptance",
+      "subplan": "2026-09-17_cclean-development/sub-026-project-workbench.md",
+      "testsPassed": 55,
+      "packageCommit": "4c7e920e1962634202fe2f0c782469d469d27e47",
+      "receipt": "artifacts/project-workbench-delivery.json",
+      "runtimePreserved": true,
+      "ciRuns": [
+        35444548177,
+        35444545353
+      ],
+      "realDeletion": "not_executed"
     }
   }
 }
