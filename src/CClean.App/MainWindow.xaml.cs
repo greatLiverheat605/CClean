@@ -120,7 +120,9 @@ public partial class MainWindow : Window
         try
         {
             if (!System.IO.File.Exists(path)) throw new System.IO.FileNotFoundException("此开发目录未携带审计文档，请使用安装版或仓库 docs/audit/implemented-features.md。");
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                System.IO.Path.Combine(Environment.SystemDirectory, "notepad.exe"))
+                { UseShellExecute = true, ArgumentList = { path } })?.Dispose();
         }
         catch (Exception error) { Status.Text = "审计文档无法打开：" + error.Message; }
     }
