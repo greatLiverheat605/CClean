@@ -30,6 +30,9 @@ public sealed class ProjectRegistry
         root = ExperimentSandbox.Normalize(root);
         if (Overlaps(root, dataRoot)) throw new InvalidOperationException("监测范围不能包含应用自身索引目录，请选择更具体的项目范围。");
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException("目录不存在。");
+        if (root.TrimEnd('\\').Equals(Path.GetPathRoot(root)?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) ||
+            Monitoring.SpaceSurvey.IsSystemPath(root, checkAncestors: true))
+            throw new InvalidOperationException("系统范围或整个磁盘不能登记监测，请选择具体项目目录。");
         using var lease = new DirectoryLease(root);
         if (Projects.Any(p => Overlaps(p.Root, root))) throw new InvalidOperationException("该范围已登记或与现有目录重叠；请使用已有范围。");
         if (Projects.Count >= 64) throw new InvalidOperationException("最多登记 64 个根目录。");

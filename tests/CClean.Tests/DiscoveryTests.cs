@@ -35,6 +35,8 @@ public class DiscoveryTests
         var project = registry.Register("合成项目", root, "ZCode");
         Assert.Throws<InvalidOperationException>(() => registry.Register("重复", root, "Codex"));
         Assert.Throws<InvalidOperationException>(() => registry.Register("自身索引", box.RunDirectory, "Codex"));
+        Assert.Throws<InvalidOperationException>(() => registry.Register("系统目录", Environment.SystemDirectory, "Codex"));
+        Assert.Throws<InvalidOperationException>(() => registry.Register("磁盘根", Path.GetPathRoot(root)!, "Codex"));
         registry.SetPaused(project.Id, true);
         Assert.True(new ProjectRegistry(data).Projects.Single().Paused);
         Assert.False(ProjectRegistry.Overlaps("C:/a", "C:/ab"));

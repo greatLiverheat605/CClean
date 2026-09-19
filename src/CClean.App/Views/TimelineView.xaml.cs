@@ -52,6 +52,7 @@ public partial class TimelineView : UserControl
             });
             if (request != revision || !IsVisible) return;
             Nodes.ItemsSource = result.Nodes; Graph.Load(result, projects, sessions, since, until);
+            selected = null; Details.Text = result.Nodes.Count == 0 ? "所选时段没有观察到变化。请检查项目是否已登记、暂停或调整时间范围；离线历史不会自动补齐。" : "选择一个变化节点，查看依据和涉及文件。";
             Coverage.Text = $"{result.Nodes.Count} 个聚合节点；{result.Gaps.Count} 条覆盖缺口；最早保留 {result.EarliestAvailable.ToLocalTime():MM-dd HH:mm}。" +
                 (result.Truncated ? "达到读取或 500 节点上限，请缩小时间范围。" : "详细历史最多 7 天；仅代表登记范围。") +
                 (result.Gaps.Count > 0 ? " 最近缺口：" + result.Gaps[0].Reason : "");

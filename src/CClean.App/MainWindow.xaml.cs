@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private Views.TimelineView? timeline;
     private Views.CleanupPreviewView? cleanup;
     private Views.CleanupHistoryView? cleanupHistory;
+    private Views.SessionsView? sessions;
     public MainWindow()
     {
         InitializeComponent();
@@ -63,6 +64,7 @@ public partial class MainWindow : Window
             overview = new(workspace); files = new(workspace); timeline = new(workspace);
             cleanup = new(workspace);
             cleanupHistory = new(workspace);
+            sessions = new(workspace);
             overview.CrashDumpPreviewRequested += async () => { Navigation.SelectedIndex = 3; await cleanup.PreviewCrashDumps(); };
             files.PreviewRequested += async paths => { Navigation.SelectedIndex = 3; await cleanup.Preview(paths); };
             timeline.CurrentDirectoryRequested += async directory => { Navigation.SelectedIndex = 2; await files.ShowDirectory(directory); };
@@ -99,6 +101,7 @@ public partial class MainWindow : Window
         if (title == "清理中心" && cleanup is not null) { PageContent.Content = cleanup; return; }
         if (title == "清理记录" && cleanupHistory is not null) { PageContent.Content = cleanupHistory; return; }
         if (title == "项目与设置" && projectSetup is not null) { PageContent.Content = projectSetup; return; }
+        if (title == "项目会话" && sessions is not null) { PageContent.Content = sessions; return; }
         PageContent.Content = new TextBlock { Text = title == "空间与快清" ? "尚未登记监测范围\n\n先登记一个项目或目录，建立当前文件基线后再查看增长。" : "此页面正在接入已验证的本地能力。当前未开放清理执行。",
             FontSize = 18, Margin = new Thickness(20) };
     }
@@ -110,5 +113,15 @@ public partial class MainWindow : Window
             new[] { "#F5F6F8", "#FFFFFF", "#17212B", "#526170", "#245BA8", "#D5DCE4", "#FFFFFF" };
         var keys = new[] { "Surface", "Panel", "Ink", "Muted", "Accent", "Line", "OnAccent" };
         for (var i = 0; i < keys.Length; i++) Application.Current.Resources[keys[i]] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colors[i]));
+    }
+    private void OpenAudit(object sender, RoutedEventArgs e)
+    {
+        var path = System.IO.Path.Combine(AppContext.BaseDirectory, "docs", "audit", "implemented-features.md");
+        try
+        {
+            if (!System.IO.File.Exists(path)) throw new System.IO.FileNotFoundException("此开发目录未携带审计文档，请使用安装版或仓库 docs/audit/implemented-features.md。");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception error) { Status.Text = "审计文档无法打开：" + error.Message; }
     }
 }

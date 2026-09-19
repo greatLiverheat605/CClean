@@ -44,6 +44,7 @@ public class SessionTests
         Assert.NotNull(instance);
         Assert.NotEqual(instance, instance with { StartedUtcTicks = instance.StartedUtcTicks + 1 });
         Assert.Null(ProcessInstance.Read(int.MaxValue));
-        Assert.All(Core.Tools.KnownTools.Baseline, t => Assert.Equal(Core.Tools.ToolCapability.ManualRegistration, t.Capability));
+        Assert.DoesNotContain(Core.Tools.KnownTools.Baseline, t => t.Capability == Core.Tools.ToolCapability.ProcessEvidence);
+        Assert.Equal(Core.Tools.ToolCapability.ManualRegistration, Core.Tools.KnownTools.Baseline.Single(t => t.Id == "zcode").Capability);
     }
 }

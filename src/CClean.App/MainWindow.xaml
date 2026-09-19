@@ -16,6 +16,7 @@
                     <TextBlock Text="空间整理 · 开发守护" Foreground="{DynamicResource Muted}" Margin="0,6,0,0"/>
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Bottom">
+                    <Button Content="已实现功能审计" Click="OpenAudit"/>
                     <TextBlock Text="本地处理 · 受控范围" Foreground="{DynamicResource Muted}" Margin="10,0,0,12"/>
                     <Button Content="切换浅色 / 深色" Click="ToggleTheme" AutomationProperties.Name="切换主题"/>
                 </StackPanel>
@@ -27,6 +28,7 @@
                     <ListBoxItem Content="文件与空间"/>
                     <ListBoxItem Content="清理中心"/>
                     <ListBoxItem Content="清理记录"/>
+                    <ListBoxItem Content="项目会话"/>
                     <ListBoxItem Content="项目与设置"/>
                 </ListBox>
             </DockPanel>

@@ -5,7 +5,7 @@
   <StackPanel>
    <TextBlock Text="确认范围后，只读发现目录；选中候选并登记后才持续监测。" Margin="0,0,0,12"/>
    <TextBlock Text="项目名称"/><TextBox x:Name="ProjectName" AutomationProperties.Name="项目名称" Margin="0,4,0,10"/>
-   <TextBlock Text="目录路径"/><TextBox x:Name="RootPath" AutomationProperties.Name="目录路径" Margin="0,4,0,10"/>
+   <DockPanel><Button DockPanel.Dock="Right" Content="选择目录" Click="Browse"/><TextBlock Text="目录路径" VerticalAlignment="Center"/></DockPanel><TextBox x:Name="RootPath" AutomationProperties.Name="目录路径" Margin="0,4,0,10"/>
    <DockPanel Margin="0,0,0,12"><TextBlock Text="工具标签" VerticalAlignment="Center" Margin="0,0,12,0"/>
     <ComboBox x:Name="Tool" SelectedIndex="0" MinHeight="36" AutomationProperties.Name="工具标签">
      <ComboBoxItem Content="Codex"/><ComboBoxItem Content="Claude Code"/><ComboBoxItem Content="ZCode"/><ComboBoxItem Content="通用工具"/>
@@ -26,6 +26,6 @@
      <DataGridTextColumn Header="已知字节" Binding="{Binding KnownBytes}" Width="110"/><DataGridTextColumn Header="未知数" Binding="{Binding Unknown}" Width="80"/></DataGrid.Columns>
    </DataGrid></TabItem>
   </TabControl>
-  <TextBlock Grid.Row="3" Text="三工具支持 A 级手动登记；未知版本不自动识别缓存。发现或登记不授予删除权限。" Margin="0,12,0,0"/>
- </Grid></TabItem><TabItem Header="会话"><ContentControl x:Name="SessionContent"/></TabItem></TabControl>
+  <TextBlock Grid.Row="3" Text="只显示项目候选，排除系统范围。自动发现的会话请在左侧“项目会话”查看。登记不授予删除权限。" Margin="0,12,0,0"/>
+ </Grid></TabItem></TabControl>
 </UserControl>

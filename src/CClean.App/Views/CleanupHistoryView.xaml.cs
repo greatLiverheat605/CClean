@@ -11,7 +11,7 @@ public partial class CleanupHistoryView : UserControl
     private void Refresh(object sender, RoutedEventArgs e) => Update();
     private void Update()
     {
-        try { Runs.ItemsSource = workspace.OpenCleanupJournal().Runs(); Status.Text = "最近最多 200 次任务；中断不自动续删，缺失不等于上次删除成功。"; }
+        try { var runs = workspace.OpenCleanupJournal().Runs(); Runs.ItemsSource = runs; Events.ItemsSource = null; Status.Text = runs.Count == 0 ? "暂无清理记录。仅预览不会生成删除任务；执行后的结果将在这里保留。" : "最近最多 200 次任务；中断不自动续删，缺失不等于上次删除成功。"; }
         catch (Exception error) { Status.Text = "审计暂不可用：" + error.Message; }
     }
     private void Select(object sender, SelectionChangedEventArgs e)

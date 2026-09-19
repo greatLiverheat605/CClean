@@ -16,8 +16,10 @@ public partial class FilesView : UserControl
         InitializeComponent(); this.workspace = workspace;
         Loaded += async (_, _) =>
         {
+            var selectedId = (ProjectFilter.SelectedItem as ProjectChoice)?.Id;
             ProjectFilter.ItemsSource = new[] { new ProjectChoice(null, "全部项目") }.Concat(workspace.Projects.Select(p => new ProjectChoice(p.Id.ToString(), p.Name))).ToArray();
-            ProjectFilter.DisplayMemberPath = "Name"; ProjectFilter.SelectedIndex = 0;
+            ProjectFilter.DisplayMemberPath = "Name";
+            ProjectFilter.SelectedItem = ProjectFilter.Items.Cast<ProjectChoice>().FirstOrDefault(p => p.Id == selectedId) ?? ProjectFilter.Items[0];
             await Update();
         };
         workspace.Indexed += async () => { if (IsVisible) await Update(); };
@@ -35,18 +37,27 @@ public partial class FilesView : UserControl
             var items = await Task.Run(() => workspace.Store.QueryFiles(search, currentPage, project, sort, special)
                 .Select(f => f with { Exclusion = f.Snapshot is null ? "缺少对象元数据" : Describe(ProtectionPolicy.Classify(f.Snapshot, rules, activity, [workspace.DataDirectory], DateTimeOffset.UtcNow)) }).ToArray());
             if (request != revision) return;
-            Files.ItemsSource = items; Feedback.Text = $"第 {currentPage + 1} 页，每页最多 200 项；分类基于索引，清理前仍须重新读取。筛选后按搜索 / 刷新生效。";
+            var visible = items.Where(f => f.Snapshot?.Attributes.HasFlag(System.IO.FileAttributes.System) != true &&
+                !Core.Monitoring.SpaceSurvey.IsSystemPath(f.Path)).ToArray();
+            Files.ItemsSource = visible;
+            PreviousButton.IsEnabled = currentPage > 0; NextButton.IsEnabled = items.Length == 200;
+            Feedback.Text = items.Length == 0 ? "此范围暂无匹配文件。请先登记项目并等待基线完成，或调整筛选。" : $"第 {currentPage + 1} 页，显示 {visible.Length} 项，隐藏系统对象 {items.Length - visible.Length} 项；分类基于索引，清理前仍须重新读取。";
         }
         catch (Exception error) { Feedback.Text = "索引查询失败：" + error.Message; }
     }
     private int revision;
+    private async void FilterChanged(object sender, SelectionChangedEventArgs e) { if (IsLoaded) { page = 0; await Update(); } }
     private static string Describe(ProtectionDecision decision) => decision.Category + "：" + decision.Reason;
     private async void Search(object sender, RoutedEventArgs e) { page = 0; await Update(); }
     private async void Previous(object sender, RoutedEventArgs e) { page = Math.Max(0, page - 1); await Update(); }
     private async void Next(object sender, RoutedEventArgs e) { page++; await Update(); }
-    private void Selected(object sender, SelectionChangedEventArgs e) => FullPath.Text = (Files.SelectedItem as IndexedFile)?.Path ?? "";
+    private void Selected(object sender, SelectionChangedEventArgs e)
+    {
+        FullPath.Text = (Files.SelectedItem as IndexedFile)?.Path ?? "";
+        CopyButton.IsEnabled = FullPath.Text.Length > 0; PreviewButton.IsEnabled = Files.SelectedItems.Count > 0;
+    }
     private void Copy(object sender, RoutedEventArgs e) { if (FullPath.Text.Length > 0) Clipboard.SetText(FullPath.Text); }
-    private void Preview(object sender, RoutedEventArgs e) => PreviewRequested?.Invoke(Files.SelectedItems.Cast<IndexedFile>().Select(f => f.Path).ToArray());
+    private void Preview(object sender, RoutedEventArgs e) { if (Files.SelectedItems.Count > 0) PreviewRequested?.Invoke(Files.SelectedItems.Cast<IndexedFile>().Select(f => f.Path).ToArray()); }
     public async Task ShowDirectory(string directory) { SearchPath.Text = directory; page = 0; await Update(); }
     private sealed record ProjectChoice(string? Id, string Name);
 }

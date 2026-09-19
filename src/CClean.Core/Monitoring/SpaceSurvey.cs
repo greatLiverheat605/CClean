@@ -114,7 +114,7 @@ public sealed class SpaceSurvey : IDisposable
         f.Project ? VersionFamily(f.Path) : "")).ToArray(), files, bytes, skipped,
         !limited && (entries is not null || pending.Count > 0), limited);
 
-    private static bool IsSystemPath(string path, bool checkAncestors = false)
+    public static bool IsSystemPath(string path, bool checkAncestors = false)
     {
         var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
         var roots = new[] { Environment.SpecialFolder.Windows, Environment.SpecialFolder.ProgramFiles,

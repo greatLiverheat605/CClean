@@ -9,7 +9,7 @@
     <CheckBox x:Name="Enabled" Content="启用 npm 11.19.0 规则（请确认实际工具版本）" Margin="0,8" Foreground="{DynamicResource Ink}"/>
     <Button Content="保存此根规则" Click="SaveRule" HorizontalAlignment="Left"/>
    </StackPanel></Expander>
-   <WrapPanel><Button x:Name="PreviewRulesButton" Content="预览已启用规则" Click="PreviewRules"/><Button x:Name="DumpPreviewButton" Content="重新预览旧转储" Click="PreviewDumps" Visibility="Collapsed"/><Button Content="取消预览" Click="CancelPreview"/></WrapPanel>
+   <WrapPanel><Button x:Name="PreviewRulesButton" Content="预览已启用规则" Click="PreviewRules"/><Button x:Name="DumpPreviewButton" Content="预览旧崩溃转储" Click="PreviewDumps"/><Button Content="取消预览" Click="CancelPreview"/></WrapPanel>
   </StackPanel>
   <TextBlock x:Name="Summary" Grid.Row="1" Text="从文件列表选择对象，或预览已启用规则；当前不会执行删除。" Margin="0,0,0,12"/>
   <DataGrid Grid.Row="2" x:Name="Items" SelectionMode="Single"><DataGrid.Columns>

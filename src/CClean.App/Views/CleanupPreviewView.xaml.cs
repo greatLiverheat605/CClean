@@ -43,7 +43,7 @@ public partial class CleanupPreviewView : UserControl
             var paths = await Task.Run(CrashDumpRule.GetPaths);
             await Preview(paths, () =>
             {
-                var protectedRoots = workspace.Projects.Select(p => p.Root).Append(workspace.DataDirectory).ToArray();
+                var protectedRoots = workspace.Projects.Select(p => p.Root).Concat(workspace.DiscoveredSessions.Select(s => s.ProjectRoot)).Append(workspace.DataDirectory).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
                 return Task.Run(() => CrashDumpRule.Context(protectedRoots));
             });
         }
@@ -54,8 +54,8 @@ public partial class CleanupPreviewView : UserControl
         if (busy || workspace.CleanupRunning) return;
         PreviewIntro.Text = context is null ? "独占 npm 缓存：清理后可能需要联网重建；规则默认关闭。"
             : "旧 WSL 故障转储：保留最新及最近 48 小时文件。只删除诊断转储，不清理项目、发行版或开发依赖。";
-        NpmSetup.Visibility = PreviewRulesButton.Visibility = context is null ? Visibility.Visible : Visibility.Collapsed;
-        DumpPreviewButton.Visibility = context is null ? Visibility.Collapsed : Visibility.Visible;
+        NpmSetup.Visibility = context is null ? Visibility.Visible : Visibility.Collapsed;
+        PreviewRulesButton.Visibility = DumpPreviewButton.Visibility = Visibility.Visible;
         busy = true; getContext = context ?? workspace.CleanupContext; plan = null; ExecuteButton.IsEnabled = false; cancellation = new(); var token = cancellation.Token;
         Items.ItemsSource = null; Summary.Text = "正在复核当前对象与消费者，尚未删除文件…";
         try

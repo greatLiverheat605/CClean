@@ -9,7 +9,7 @@ namespace CClean.App.Views;
 public partial class ProjectSetupView : UserControl
 {
     private readonly WorkspaceViewModel workspace;
-    private DirectoryDiscovery? discovery;
+    private SpaceSurvey? discovery;
     private string? discoveryRoot;
     private CancellationTokenSource? cancellation;
     public ProjectSetupView(WorkspaceViewModel workspace)
@@ -17,7 +17,6 @@ public partial class ProjectSetupView : UserControl
         InitializeComponent();
         this.workspace = workspace;
         Registered.ItemsSource = workspace.Projects;
-        SessionContent.Content = new SessionsView(workspace);
         Unloaded += (_, _) =>
         {
             cancellation?.Cancel();
@@ -40,8 +39,9 @@ public partial class ProjectSetupView : UserControl
                 }
                 return discovery.Next(cancellation.Token);
             });
-            Candidates.ItemsSource = result.Candidates;
-            Feedback.Text = $"本批检查 {result.Inspected} 个对象；{(result.HasMore ? "仍有未扫描范围，可继续" : "本轮扫描结束")}；缺口 {result.Gaps.Count}。候选只展示前 200 个目录。";
+            Candidates.ItemsSource = result.Folders.Where(f => f.Project).OrderByDescending(f => f.Bytes).Take(200)
+                .Select(f => new DiscoveryCandidate(f.Path, f.Bytes, f.Files, 0)).ToArray();
+            Feedback.Text = $"已盘点 {result.Files} 个文件；{(result.HasMore ? "仍有未扫描范围，可继续" : "本轮扫描结束")}；跳过 {result.Skipped} 项。系统范围不列出，最多显示 200 个项目。";
         }
         catch (OperationCanceledException) { Feedback.Text = "已取消；可以继续扫描剩余范围。"; }
         catch (Exception error) { Feedback.Text = "发现失败：" + error.Message; }
@@ -52,6 +52,11 @@ public partial class ProjectSetupView : UserControl
         }
     }
     private void Cancel(object sender, RoutedEventArgs e) => cancellation?.Cancel();
+    private void Browse(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "选择项目目录" };
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true) { RootPath.Text = dialog.FolderName; ProjectName.Text = System.IO.Path.GetFileName(dialog.FolderName); }
+    }
     private async void Register(object sender, RoutedEventArgs e)
     {
         RegisterButton.IsEnabled = false;
@@ -74,6 +79,6 @@ public partial class ProjectSetupView : UserControl
     }
     private void SelectCandidate(object sender, SelectionChangedEventArgs e)
     {
-        if (Candidates.SelectedItem is DiscoveryCandidate candidate) RootPath.Text = candidate.Path;
+        if (Candidates.SelectedItem is DiscoveryCandidate candidate) { RootPath.Text = candidate.Path; ProjectName.Text = System.IO.Path.GetFileName(candidate.Path); }
     }
 }

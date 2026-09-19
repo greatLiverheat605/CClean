@@ -1,5 +1,14 @@
 <UserControl x:Class="CClean.App.Views.SessionsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <Grid Margin="12">
+ <TabControl><TabItem Header="自动发现"><Grid Margin="12">
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+ <StackPanel><TextBlock Text="项目会话" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="启动自动发现，完成后每 30 秒刷新；只提取项目路径、会话 ID 和时间。" Foreground="{DynamicResource Muted}" Margin="0,8"/>
+ <TextBlock Text="搜索项目、工具或会话 ID" Margin="0,0,0,4"/><DockPanel><Button DockPanel.Dock="Right" Content="立即刷新" Click="Discover"/><TextBox x:Name="DiscoverySearch" TextChanged="SearchDiscovered" AutomationProperties.Name="搜索会话或项目路径" ToolTip="搜索项目路径、工具或会话 ID" Margin="0,0,12,8"/></DockPanel></StackPanel>
+ <TextBlock Grid.Row="1" x:Name="DiscoveryFeedback" Margin="0,4,0,12" AutomationProperties.LiveSetting="Polite"/>
+ <DataGrid Grid.Row="2" x:Name="Discovered" SelectionMode="Single" SelectionChanged="SelectDiscovered" AutomationProperties.Name="自动发现的项目会话"><DataGrid.Columns>
+ <DataGridTextColumn Header="项目" Binding="{Binding ProjectName}" Width="*"/><DataGridTextColumn Header="工具" Binding="{Binding Tool}" Width="110"/><DataGridTextColumn Header="状态" Binding="{Binding StateLabel}" Width="190"/><DataGridTextColumn Header="最近更新" Binding="{Binding UpdatedLocal}" Width="120"/>
+ </DataGrid.Columns></DataGrid>
+ <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBox x:Name="DiscoveredDetails" Text="选择会话查看项目目录和来源。" IsReadOnly="True" TextWrapping="Wrap" AutomationProperties.Name="发现会话详情" MaxHeight="110" VerticalScrollBarVisibility="Auto"/><WrapPanel Margin="0,8,0,0"><Button x:Name="RegisterDiscoveredButton" Content="将此项目加入监测" Click="RegisterDiscovered" IsEnabled="False"/></WrapPanel><TextBlock Text="发现记录不等于正在运行，也不等于可以清理；项目目录继续受保护。ZCode 暂不支持自动发现，可使用手动会话。" Foreground="{DynamicResource Muted}"/></StackPanel>
+ </Grid></TabItem><TabItem Header="手动会话"><Grid Margin="12">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel>
    <TextBlock Text="手动会话" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"/>
@@ -13,12 +22,12 @@
    <TextBox x:Name="Dependencies" AcceptsReturn="True" Height="65" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="会话依赖目录" Margin="0,4,0,10"/></Expander>
    <WrapPanel><Button Content="开始手动会话" Click="Begin"/><Button Content="结束选中会话" Click="End"/><Button Content="恢复中断会话" Click="Resume"/></WrapPanel>
   </StackPanel>
-  <TextBlock Grid.Row="1" x:Name="Feedback" Text="三工具均为 A 级手动绑定，未启用自动进程绑定；不读取聊天内容。" Margin="0,4,0,12"/>
+  <TextBlock Grid.Row="1" x:Name="Feedback" Text="本页记录手动开发上下文，不代表真实进程状态；已有工具会话请查看“自动发现”。" Margin="0,4,0,12"/>
   <DataGrid Grid.Row="2" x:Name="Sessions" SelectionMode="Single">
    <DataGrid.Columns><DataGridTextColumn Header="名称" Binding="{Binding Label}" Width="*"/><DataGridTextColumn Header="工具" Binding="{Binding Tool}" Width="110"/>
     <DataGridTextColumn Header="状态" Binding="{Binding StateLabel}" Width="200"/><DataGridTextColumn Header="开始时间（本地）" Binding="{Binding StartedLocal}" Width="160"/>
    </DataGrid.Columns>
   </DataGrid>
   <TextBlock Grid.Row="3" Text="会话是本工具记录的开发上下文，不等于聊天 ID。退出后未结束的会话会标为中断；恢复会建立新的时间段，不补造离线历史。" Margin="0,12,0,0"/>
- </Grid>
+ </Grid></TabItem></TabControl>
 </UserControl>

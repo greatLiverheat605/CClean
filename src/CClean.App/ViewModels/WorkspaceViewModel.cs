@@ -21,6 +21,29 @@ public sealed class WorkspaceViewModel : IDisposable
     private readonly Dictionary<Guid, Dictionary<string, FileSnapshot>> previous = [];
     public LocalStore Store { get; }
     public Core.Sessions.SessionRegistry Sessions { get; }
+    private readonly Core.Sessions.SessionDiscovery sessionDiscovery = new();
+    private readonly CancellationTokenSource discoveryClosing = new();
+    private readonly System.Windows.Threading.DispatcherTimer discoveryTimer = new() { Interval = TimeSpan.FromSeconds(10) };
+    private bool discoveringSessions;
+    public IReadOnlyList<Core.Sessions.DiscoveredSession> DiscoveredSessions { get; private set; } = [];
+    public string DiscoveryStatus { get; private set; } = "正在发现本机项目会话…";
+    public event Action? SessionsDiscovered;
+    public async Task DiscoverSessions()
+    {
+        if (discoveringSessions || disposed) return;
+        discoveringSessions = true;
+        try
+        {
+            var result = await Task.Run(() => sessionDiscovery.Next(discoveryClosing.Token));
+            if (disposed) return;
+            DiscoveredSessions = result.Sessions; DiscoveryStatus = result.Status;
+            discoveryTimer.Interval = TimeSpan.FromSeconds(result.HasMore ? 2 : 30);
+            SessionsDiscovered?.Invoke();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { if (!disposed) { DiscoveryStatus = "会话发现暂不可用，保留已知保护范围：" + error.Message; SessionsDiscovered?.Invoke(); } }
+        finally { discoveringSessions = false; if (disposed) sessionDiscovery.Dispose(); }
+    }
     public Core.Cleanup.RuleCatalog Rules { get; }
     private Core.Cleanup.CleanupJournal? cleanupJournal;
     private Core.Cleanup.CleanupExecutor? cleanupExecutor;
@@ -116,10 +139,13 @@ public sealed class WorkspaceViewModel : IDisposable
             finally { saving = false; }
         };
         statusTimer.Start();
+        discoveryTimer.Tick += async (_, _) => await DiscoverSessions();
+        discoveryTimer.Start();
     }
 
     public async Task Resume()
     {
+        await DiscoverSessions();
         foreach (var project in Projects.Where(p => !p.Paused).ToArray()) await Start(project);
     }
     public Core.Sessions.ActivitySnapshot Activity()
@@ -131,7 +157,8 @@ public sealed class WorkspaceViewModel : IDisposable
         var scopes = snapshot.Scopes.Select(s => Projects.Any(p => ProjectRegistry.Overlaps(p.Root, s.Root) &&
             Monitors.TryGetValue(p.Id, out var m) && m.LastActivity > DateTimeOffset.UtcNow.AddMinutes(-30))
                 ? s with { Active = true, Reason = "近期目录发生变化，保持活动保护" } : s).ToArray();
-        return snapshot with { Scopes = scopes };
+        return snapshot with { Scopes = scopes.Concat(DiscoveredSessions.Select(s =>
+            new Core.Sessions.ActivityScope(s.ProjectRoot, false, false, "工具会话自动发现；运行状态未知，保持保护"))).ToArray() };
     }
     public async Task<Core.Cleanup.CleanupContext> CleanupContext()
     {
@@ -197,5 +224,5 @@ public sealed class WorkspaceViewModel : IDisposable
         Status = !project.Paused ? "已暂停；暂停区间是历史缺口。" : "已恢复；正在重新校准当前状态。";
         Changed?.Invoke();
     }
-    public void Dispose() { disposed = true; statusTimer.Stop(); foreach (var monitor in Monitors.Values) monitor.Dispose(); Store.Dispose(); Sessions.Dispose(); cleanupJournal?.Dispose(); cleanupCancellation?.Dispose(); }
+    public void Dispose() { disposed = true; discoveryClosing.Cancel(); if (!discoveringSessions) sessionDiscovery.Dispose(); discoveryTimer.Stop(); statusTimer.Stop(); foreach (var monitor in Monitors.Values) monitor.Dispose(); Store.Dispose(); Sessions.Dispose(); cleanupJournal?.Dispose(); cleanupCancellation?.Dispose(); }
 }
