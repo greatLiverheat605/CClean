@@ -1270,7 +1270,7 @@
     },
     "productCompletion": {
       "version": "0.1.6",
-      "status": "validated_packaging_in_progress",
+      "status": "installed_core_verified_acceptance_gaps_remain",
       "subplan": "2026-09-17_cclean-development/sub-027-personal-product-completion.md",
       "testsPassed": 68,
       "discovery": "manual_bounded_rescan_verified",
@@ -1282,8 +1282,14 @@
       "memoryPassed": false,
       "cpuPercent": 0.533,
       "cpuPassed": true,
-      "stability": "24h_observation_to_start_multiday_pending",
-      "receipt": "artifacts/product-completion-delivery.json"
+      "stability": "24h_final_build_observation_running_multiday_pending",
+      "receipt": "artifacts/product-completion-delivery.json",
+      "packageCommit": "b2cbcf1d0f4c0c34e70e50eacbb4567d2ea070b5",
+      "ciRuns": [
+        35449241867,
+        35449239926
+      ],
+      "runtimePreserved": true
     }
   }
 }
