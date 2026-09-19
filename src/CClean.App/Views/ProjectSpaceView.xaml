@@ -1,0 +1,13 @@
+<UserControl x:Class="CClean.App.Views.ProjectSpaceView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid Margin="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel><TextBlock Text="项目空间与清理位置" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="先盘点，再检查具体位置。只有逐文件复核通过才标记清理候选；源码、系统文件与活动未知范围保持保护。" Foreground="{DynamicResource Muted}" Margin="0,6,0,10"/>
+   <WrapPanel><Button x:Name="ScanButton" Content="盘点 / 继续" Click="Scan"/><Button Content="停止" Click="Stop"/><Button x:Name="InspectButton" Content="检查选中位置的清理资格" Click="Inspect" IsEnabled="False"/></WrapPanel>
+  </StackPanel>
+  <TextBlock Grid.Row="1" x:Name="Status" Text="选择项目后打开此页，将只读盘点项目目录。" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite"/>
+  <DataGrid Grid.Row="2" x:Name="Locations" SelectionChanged="Selected" SelectionMode="Single" AutomationProperties.Name="项目清理位置"><DataGrid.Columns>
+   <DataGridTextColumn Header="位置" Binding="{Binding Relative}" Width="*"/><DataGridTextColumn Header="已盘点大小" Binding="{Binding Size}" Width="115"/>
+   <DataGridTextColumn Header="清理标记" Binding="{Binding Marker}" Width="230"/>
+  </DataGrid.Columns></DataGrid>
+  <StackPanel Grid.Row="3" Margin="0,10,0,0"><TextBox x:Name="Details" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="95" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="清理位置依据" Text="目录大小不等于可释放空间；父子目录不能相加。"/><Button x:Name="PreviewButton" Content="打开候选确认清单…" Click="Preview" IsEnabled="False" HorizontalAlignment="Left" Margin="0,8,0,0"/></StackPanel>
+ </Grid>
+</UserControl>

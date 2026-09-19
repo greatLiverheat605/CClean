@@ -9,22 +9,30 @@ namespace CClean.App.Views;
 public partial class SessionsView : UserControl
 {
     private readonly WorkspaceViewModel workspace;
+    private ProjectModule? scope;
+    public void ShowProject(ProjectModule project)
+    {
+        scope = project; DiscoverySearch.Text = "";
+        Project.ItemsSource = workspace.Projects.Where(p => p.Id == project.RegistrationId).ToArray();
+        Project.SelectedIndex = Project.Items.Count > 0 ? 0 : -1; Project.IsEnabled = false;
+        Refresh(); RefreshDiscovered();
+    }
     public SessionsView(WorkspaceViewModel workspace)
     {
         InitializeComponent(); this.workspace = workspace;
         Project.ItemsSource = workspace.Projects;
         workspace.SessionsDiscovered += RefreshDiscovered;
         Loaded += (_, _) => RefreshDiscovered();
-        Loaded += (_, _) => { if (Project.SelectedIndex < 0 && workspace.Projects.Count > 0) Project.SelectedIndex = 0; Refresh(); };
+        Loaded += (_, _) => { if (Project.SelectedIndex < 0 && Project.Items.Count > 0) Project.SelectedIndex = 0; Refresh(); };
     }
-    private void Refresh() => Sessions.ItemsSource = workspace.Sessions.All.OrderByDescending(s => s.Started).ToArray();
+    private void Refresh() => Sessions.ItemsSource = workspace.Sessions.All.Where(s => scope is null || s.ProjectId == scope.RegistrationId).OrderByDescending(s => s.Started).ToArray();
     private async void Discover(object sender, RoutedEventArgs e) => await workspace.DiscoverSessions();
     private void SearchDiscovered(object sender, TextChangedEventArgs e) { if (workspace is not null) RefreshDiscovered(); }
     private void RefreshDiscovered()
     {
         var selected = Discovered.SelectedItem as DiscoveredSession;
         var query = DiscoverySearch.Text.Trim();
-        var rows = workspace.DiscoveredSessions.Where(s => (s.ProjectRoot + " " + s.Tool + " " + s.Id).Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var rows = workspace.DiscoveredSessions.Where(s => (scope is null || Core.Cleanup.ProtectionPolicy.Contains(scope.Root, s.ProjectRoot)) && (s.ProjectRoot + " " + s.Tool + " " + s.Id).Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
         Discovered.ItemsSource = rows;
         Discovered.SelectedItem = rows.FirstOrDefault(s => s.Tool == selected?.Tool && s.Id == selected.Id);
         DiscoveryFeedback.Text = workspace.DiscoveryStatus + (rows.Length == 0 ? " 当前无匹配记录；可使用手动会话。" : $" 当前显示 {rows.Length} 条。");

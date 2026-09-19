@@ -7,6 +7,7 @@ namespace CClean.Core.Storage;
 
 public sealed record IndexedFile(string ProjectId, string Path, string? Identity, long? LogicalBytes, long? AllocatedBytes, long InitialBytes, string? Exclusion, FileSnapshot? Snapshot = null)
 {
+    public string DisplayPath { get; init; } = Path;
     public long? Growth => LogicalBytes is null ? null : LogicalBytes - InitialBytes;
     public string LogicalDisplay => FormatBytes(LogicalBytes);
     public string AllocationDisplay => FormatBytes(AllocatedBytes);
@@ -148,13 +149,14 @@ public sealed class LocalStore : IDisposable
         command.Parameters.AddWithValue("$after", (object?)after ?? DBNull.Value); command.Parameters.AddWithValue("$kind", kind); command.ExecuteNonQuery();
     }
 
-    public IReadOnlyList<IndexedFile> QueryFiles(string search = "", int page = 0, string? project = null, string sort = "allocated", bool? special = null)
+    public IReadOnlyList<IndexedFile> QueryFiles(string search = "", int page = 0, string? project = null, string sort = "allocated", bool? special = null, string? root = null)
     {
         lock (sync)
         {
             using var command = connection.CreateCommand();
             var order = sort switch { "growth" => "files.logical-COALESCE(baselines.logical,0) DESC", "modified" => "json_extract(snapshot,'$.ModifiedTime') DESC", _ => "allocated DESC" };
-            command.CommandText = "SELECT project,path,files.identity,files.logical,allocated,COALESCE(baselines.logical,0),snapshot FROM files LEFT JOIN baselines ON files.identity=baselines.identity WHERE instr(lower(path),lower($search))>0 AND ($project IS NULL OR project=$project) AND ($special IS NULL OR (json_extract(snapshot,'$.Exclusion') IS NOT NULL)=$special) ORDER BY " + order + ",path LIMIT 200 OFFSET $offset";
+            command.CommandText = "SELECT project,path,files.identity,files.logical,allocated,COALESCE(baselines.logical,0),snapshot FROM files LEFT JOIN baselines ON files.identity=baselines.identity WHERE instr(lower(path),lower($search))>0 AND ($project IS NULL OR project=$project) AND " + PathScope + " AND ($special IS NULL OR (json_extract(snapshot,'$.Exclusion') IS NOT NULL)=$special) ORDER BY " + order + ",path LIMIT 200 OFFSET $offset";
+            BindPathScope(command, root);
             command.Parameters.AddWithValue("$search", search); command.Parameters.AddWithValue("$offset", checked(Math.Max(page, 0) * 200));
             command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
             command.Parameters.AddWithValue("$special", special is null ? DBNull.Value : special.Value ? 1 : 0);
@@ -195,12 +197,14 @@ public sealed class LocalStore : IDisposable
         }
     }
 
-    public IReadOnlyList<StoredChange> Changes(DateTimeOffset since, int limit = 5000)
+    public IReadOnlyList<StoredChange> Changes(DateTimeOffset since, int limit = 5000, string? project = null, string? root = null)
     {
         lock (sync)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT id,time,project,path,identity,before_size,after_size,kind FROM changes WHERE time >= $since ORDER BY id DESC LIMIT $limit";
+            command.CommandText = "SELECT id,time,project,path,identity,before_size,after_size,kind FROM changes WHERE time >= $since AND ($project IS NULL OR project=$project) AND " + PathScope + " ORDER BY id DESC LIMIT $limit";
+            command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
+            BindPathScope(command, root);
             command.Parameters.AddWithValue("$since", since.ToString("O")); command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 10000));
             using var reader = command.ExecuteReader(); var changes = new List<StoredChange>();
             while (reader.Read()) changes.Add(new(reader.GetInt64(0), DateTimeOffset.Parse(reader.GetString(1)), reader.GetString(2), reader.GetString(3),
@@ -208,11 +212,13 @@ public sealed class LocalStore : IDisposable
             return changes;
         }
     }
-    public DateTimeOffset EarliestHistory()
+    public DateTimeOffset EarliestHistory(string? project = null, string? root = null)
     {
         lock (sync)
         {
-            using var command = connection.CreateCommand(); command.CommandText = "SELECT MIN(time) FROM changes";
+            using var command = connection.CreateCommand(); command.CommandText = "SELECT MIN(time) FROM changes WHERE ($project IS NULL OR project=$project) AND " + PathScope;
+            command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
+            BindPathScope(command, root);
             return command.ExecuteScalar() is string time ? DateTimeOffset.Parse(time) : DateTimeOffset.UtcNow;
         }
     }
@@ -230,11 +236,12 @@ public sealed class LocalStore : IDisposable
             command.Parameters.AddWithValue("$cutoff", DateTimeOffset.UtcNow.AddDays(-7).ToString("O")); command.ExecuteNonQuery();
         }
     }
-    public IReadOnlyList<CoverageGap> Gaps(DateTimeOffset since)
+    public IReadOnlyList<CoverageGap> Gaps(DateTimeOffset since, string? project = null)
     {
         lock (sync)
         {
-            using var command = connection.CreateCommand(); command.CommandText = "SELECT time,project,reason FROM gaps WHERE time >= $since ORDER BY id DESC LIMIT 10000";
+            using var command = connection.CreateCommand(); command.CommandText = "SELECT time,project,reason FROM gaps WHERE time >= $since AND ($project IS NULL OR project=$project) ORDER BY id DESC LIMIT 10000";
+            command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
             command.Parameters.AddWithValue("$since", since.ToString("O")); using var reader = command.ExecuteReader();
             var gaps = new List<CoverageGap>();
             while (reader.Read()) gaps.Add(new(DateTimeOffset.Parse(reader.GetString(0)), reader.GetString(1), reader.GetString(2)));
@@ -242,4 +249,11 @@ public sealed class LocalStore : IDisposable
         }
     }
     public void Dispose() { lock (sync) connection.Dispose(); }
+    private const string PathScope = "($root IS NULL OR path=$root COLLATE NOCASE OR substr(path,1,length($prefix))=$prefix COLLATE NOCASE)";
+    private static void BindPathScope(Microsoft.Data.Sqlite.SqliteCommand command, string? root)
+    {
+        root = root is null ? null : Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        command.Parameters.AddWithValue("$root", (object?)root ?? DBNull.Value);
+        command.Parameters.AddWithValue("$prefix", root is null ? DBNull.Value : root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
+    }
 }

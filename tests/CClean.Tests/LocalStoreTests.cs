@@ -79,4 +79,29 @@ public class LocalStoreTests
         Assert.Equal(-100, reopened.Totals(monitored).Growth);
         Assert.Contains(reopened.Changes(DateTimeOffset.MinValue), change => change.Kind == "初始存量");
     }
+    [Fact]
+    public void ProjectAndRootScopeApplyBeforePagingAndHistoryLimits()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-scope-" + Guid.NewGuid().ToString("N")));
+        using var store = new LocalStore(Path.Combine(box.RunDirectory, "data"));
+        var root = Path.Combine(box.RunDirectory, "app"); Directory.CreateDirectory(root);
+        var other = Path.Combine(box.RunDirectory, "app-backup"); Directory.CreateDirectory(other);
+        File.WriteAllBytes(Path.Combine(root, "keep.bin"), new byte[32]);
+        for (var i = 0; i < 205; i++) File.WriteAllBytes(Path.Combine(other, $"other-{i}.bin"), new byte[100]);
+        Assert.True(store.SaveSnapshot("a", DirectoryScanner.Scan(root), store.LoadSnapshots("a")));
+        Assert.True(store.SaveSnapshot("b", DirectoryScanner.Scan(other), store.LoadSnapshots("b")));
+        Assert.Single(store.QueryFiles(project: "a", root: root.ToUpperInvariant()));
+        Assert.Empty(store.QueryFiles(page: 1, project: "a", root: root));
+        Assert.Empty(store.QueryFiles(project: "b", root: root));
+        Assert.Single(store.QueryFiles(root: root));
+        Assert.Equal(200, store.QueryFiles(project: "b", root: other).Count);
+        Assert.Equal(5, store.QueryFiles(page: 1, project: "b", root: other).Count);
+        var change = Assert.Single(store.Changes(DateTimeOffset.MinValue, 1, "a", root));
+        Assert.Equal(Path.Combine(root, "keep.bin"), change.Path);
+        Assert.Single(store.Changes(DateTimeOffset.MinValue, 10000, root: root));
+        Assert.Equal(change.Time, store.EarliestHistory("a", root));
+        store.RecordGap("a", "project-a"); store.RecordGap("b", "project-b");
+        Assert.Equal("project-a", Assert.Single(store.Gaps(DateTimeOffset.MinValue, "a")).Reason);
+    }
+
 }

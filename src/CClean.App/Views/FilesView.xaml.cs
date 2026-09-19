@@ -10,12 +10,21 @@ public partial class FilesView : UserControl
 {
     private readonly WorkspaceViewModel workspace;
     private int page;
+    private Core.Projects.ProjectModule? scope;
+    public async Task ShowProject(Core.Projects.ProjectModule project)
+    {
+        scope = project; revision++; page = 0; SearchPath.Text = ""; Files.ItemsSource = null;
+        ProjectFilter.ItemsSource = new[] { new ProjectChoice(project.RegistrationId?.ToString() ?? "unregistered", project.Name) };
+        ProjectFilter.DisplayMemberPath = "Name"; ProjectFilter.SelectedIndex = 0; ProjectFilter.IsEnabled = false;
+        await Update();
+    }
     public event Action<string[]>? PreviewRequested;
     public FilesView(WorkspaceViewModel workspace)
     {
         InitializeComponent(); this.workspace = workspace;
         Loaded += async (_, _) =>
         {
+            if (scope is not null) { await Update(); return; }
             var selectedId = (ProjectFilter.SelectedItem as ProjectChoice)?.Id;
             ProjectFilter.ItemsSource = new[] { new ProjectChoice(null, "全部项目") }.Concat(workspace.Projects.Select(p => new ProjectChoice(p.Id.ToString(), p.Name))).ToArray();
             ProjectFilter.DisplayMemberPath = "Name";
@@ -27,21 +36,22 @@ public partial class FilesView : UserControl
     private async Task Update()
     {
         var search = SearchPath.Text;
-        var project = (ProjectFilter.SelectedItem as ProjectChoice)?.Id;
+        var project = scope is null ? (ProjectFilter.SelectedItem as ProjectChoice)?.Id : scope.RegistrationId?.ToString() ?? "unregistered";
         var sort = Sort.SelectedIndex switch { 1 => "growth", 2 => "modified", _ => "allocated" };
         bool? special = Classification.SelectedIndex switch { 1 => false, 2 => true, _ => null };
         var activity = workspace.Activity(); var rules = workspace.Rules.Scopes; var currentPage = page;
+        var root = scope?.Root;
         var request = ++revision;
         try
         {
-            var items = await Task.Run(() => workspace.Store.QueryFiles(search, currentPage, project, sort, special)
-                .Select(f => f with { Exclusion = f.Snapshot is null ? "缺少对象元数据" : Describe(ProtectionPolicy.Classify(f.Snapshot, rules, activity, [workspace.DataDirectory], DateTimeOffset.UtcNow)) }).ToArray());
+            var items = await Task.Run(() => workspace.Store.QueryFiles(search, currentPage, project, sort, special, root)
+                .Select(f => f with { DisplayPath = root is null ? f.Path : System.IO.Path.GetRelativePath(root, f.Path), Exclusion = f.Snapshot is null ? "缺少对象元数据" : Describe(ProtectionPolicy.Classify(f.Snapshot, rules, activity, [workspace.DataDirectory], DateTimeOffset.UtcNow)) }).ToArray());
             if (request != revision) return;
             var visible = items.Where(f => f.Snapshot?.Attributes.HasFlag(System.IO.FileAttributes.System) != true &&
                 !Core.Monitoring.SpaceSurvey.IsSystemPath(f.Path)).ToArray();
             Files.ItemsSource = visible;
             PreviousButton.IsEnabled = currentPage > 0; NextButton.IsEnabled = items.Length == 200;
-            Feedback.Text = items.Length == 0 ? "此范围暂无匹配文件。请先登记项目并等待基线完成，或调整筛选。" : $"第 {currentPage + 1} 页，显示 {visible.Length} 项，隐藏系统对象 {items.Length - visible.Length} 项；分类基于索引，清理前仍须重新读取。";
+            Feedback.Text = scope is { RegistrationId: null } ? "此项目尚未登记监测，没有文件索引。可在上方加入监测；当前目录大小可在“清理位置”只读盘点。" : items.Length == 0 ? "此项目暂无匹配文件。请等待基线完成，或调整筛选。" : $"第 {currentPage + 1} 页，显示 {visible.Length} 项，隐藏系统对象 {items.Length - visible.Length} 项；分类基于索引，清理前仍须重新读取。";
         }
         catch (Exception error) { Feedback.Text = "索引查询失败：" + error.Message; }
     }

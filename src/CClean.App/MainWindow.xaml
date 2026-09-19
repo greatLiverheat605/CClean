@@ -23,12 +23,10 @@
                 <ListBox x:Name="Navigation" SelectionChanged="Navigate" BorderThickness="0" Background="Transparent"
                          Foreground="{DynamicResource Ink}" AutomationProperties.Name="主导航">
                     <ListBox.Resources><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="12,13"/><Setter Property="Margin" Value="0,2"/></Style></ListBox.Resources>
+                    <ListBoxItem Content="项目工作台"/>
                     <ListBoxItem Content="空间与快清"/>
-                    <ListBoxItem Content="开发时间线"/>
-                    <ListBoxItem Content="文件与空间"/>
                     <ListBoxItem Content="清理中心"/>
                     <ListBoxItem Content="清理记录"/>
-                    <ListBoxItem Content="项目会话"/>
                     <ListBoxItem Content="项目与设置"/>
                 </ListBox>
             </DockPanel>
@@ -37,7 +35,7 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,20">
                 <Button DockPanel.Dock="Right" Content="刷新容量" Click="Refresh"/>
-                <StackPanel><TextBlock x:Name="PageTitle" Text="空间与快清" FontSize="28" FontWeight="SemiBold"/>
+                <StackPanel><TextBlock x:Name="PageTitle" Text="项目工作台" FontSize="28" FontWeight="SemiBold"/>
                     <TextBlock x:Name="Capacity" Text="正在读取系统容量…" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/></StackPanel>
             </DockPanel>
             <Border Grid.Row="1" Background="{DynamicResource Panel}" Padding="16,12" Margin="0,0,0,20" CornerRadius="6">

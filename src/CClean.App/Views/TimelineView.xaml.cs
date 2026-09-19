@@ -12,6 +12,15 @@ public partial class TimelineView : UserControl
     private TimelineNode? selected;
     private int revision;
     private bool querying, refreshPending;
+    private Core.Projects.ProjectModule? scope;
+    public async Task ShowProject(Core.Projects.ProjectModule project)
+    {
+        scope = project; revision++; selected = null; Nodes.ItemsSource = null;
+        Graph.Load(new([], false, DateTimeOffset.UtcNow, []), [], [], DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow);
+        ProjectFilter.ItemsSource = new[] { new ProjectChoice(project.RegistrationId?.ToString() ?? "unregistered", project.Name) };
+        ProjectFilter.DisplayMemberPath = "Name"; ProjectFilter.SelectedIndex = 0; ProjectFilter.IsEnabled = false;
+        await Update();
+    }
     public event Action<string>? CurrentDirectoryRequested;
     public TimelineView(WorkspaceViewModel workspace)
     {
@@ -19,6 +28,7 @@ public partial class TimelineView : UserControl
         Graph.Selected += Show;
         Loaded += async (_, _) =>
         {
+            if (scope is not null) { await Update(); return; }
             var selectedId = (ProjectFilter.SelectedItem as ProjectChoice)?.Id;
             ProjectFilter.ItemsSource = new[] { new ProjectChoice(null, "全部项目") }.Concat(workspace.Projects.Select(p => new ProjectChoice(p.Id.ToString(), p.Name))).ToArray();
             ProjectFilter.DisplayMemberPath = "Name";
@@ -36,18 +46,19 @@ public partial class TimelineView : UserControl
         var request = ++revision;
         var until = DateTimeOffset.UtcNow;
         var since = until - (TimeRange.SelectedIndex switch { 0 => TimeSpan.FromMinutes(15), 2 => TimeSpan.FromDays(1), 3 => TimeSpan.FromDays(7), _ => TimeSpan.FromHours(1) });
-        var project = (ProjectFilter.SelectedItem as ProjectChoice)?.Id;
+        var project = scope is null ? (ProjectFilter.SelectedItem as ProjectChoice)?.Id : scope.RegistrationId?.ToString() ?? "unregistered";
         var tool = ToolFilter.SelectedIndex == 0 ? null : ((ComboBoxItem)ToolFilter.SelectedItem).Content.ToString();
         EvidenceKind? evidence = EvidenceFilter.SelectedIndex switch { 1 => EvidenceKind.Context, 2 => EvidenceKind.Shared, 3 => EvidenceKind.Unknown, _ => null };
         var bucketSeconds = TimeRange.SelectedIndex >= 2 ? 3600 : 60;
         var sessions = workspace.Sessions.All; var projects = workspace.Projects.ToArray();
+        var root = scope?.Root;
         Coverage.Text = "正在查询有界历史…";
         try
         {
             var result = await Task.Run(() =>
             {
-                var changes = workspace.Store.Changes(since, 10000);
-                return TimelineQuery.Build(changes, sessions, workspace.Store.Gaps(since), since, until, workspace.Store.EarliestHistory(),
+                var changes = workspace.Store.Changes(since, 10000, project, root);
+                return TimelineQuery.Build(changes, sessions, workspace.Store.Gaps(since, project), since, until, workspace.Store.EarliestHistory(project, root),
                     project, tool, evidence, bucketSeconds: bucketSeconds, inputTruncated: changes.Count == 10000);
             });
             if (request != revision || !IsVisible) return;
@@ -56,6 +67,7 @@ public partial class TimelineView : UserControl
             Coverage.Text = $"{result.Nodes.Count} 个聚合节点；{result.Gaps.Count} 条覆盖缺口；最早保留 {result.EarliestAvailable.ToLocalTime():MM-dd HH:mm}。" +
                 (result.Truncated ? "达到读取或 500 节点上限，请缩小时间范围。" : "详细历史最多 7 天；仅代表登记范围。") +
                 (result.Gaps.Count > 0 ? " 最近缺口：" + result.Gaps[0].Reason : "");
+            if (scope is { RegistrationId: null }) Coverage.Text = "此项目尚未登记监测，没有已记录的文件开发线；加入监测后开始记录。已有工具会话请查看“项目会话”，不会补造离线文件历史。";
         }
         catch (Exception error) { if (request == revision) Coverage.Text = "历史查询失败：" + error.Message; }
         finally
