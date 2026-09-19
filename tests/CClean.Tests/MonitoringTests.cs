@@ -9,18 +9,59 @@ namespace CClean.Tests;
 [Trait("Category", "Foundation")]
 public class MonitoringTests
 {
-    [Fact]
-    public void CalibrationReusesOnlyUnchangedMetadata()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CalibrationReusesOnlyUnchangedMetadata(bool absolutePaths)
     {
         using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-reuse-" + Guid.NewGuid().ToString("N")));
         box.CreateFixture("same.bin", 10);
         box.CreateFixture("changed.bin", 10);
-        var initial = DirectoryScanner.Scan(box.RunDirectory);
+        var initial = DirectoryScanner.Scan(box.RunDirectory, absolutePaths: absolutePaths);
         File.AppendAllText(Path.Combine(box.RunDirectory, "changed.bin"), "changed", System.Text.Encoding.UTF8);
-        var current = DirectoryScanner.Scan(box.RunDirectory, previous: initial.Files);
-        Assert.Same(initial.Files["same.bin"], current.Files["same.bin"]);
-        Assert.NotSame(initial.Files["changed.bin"], current.Files["changed.bin"]);
-        Assert.True(current.Files["changed.bin"].LogicalBytes > initial.Files["changed.bin"].LogicalBytes);
+        var current = DirectoryScanner.Scan(box.RunDirectory, previous: initial.Files, absolutePaths: absolutePaths);
+        var same = absolutePaths ? Path.Combine(box.RunDirectory, "same.bin") : "same.bin";
+        var changed = absolutePaths ? Path.Combine(box.RunDirectory, "changed.bin") : "changed.bin";
+        if (absolutePaths) Assert.Same(current.Files, current.FilesByPath);
+        Assert.Same(initial.Files[same], current.Files[same]);
+        Assert.NotSame(initial.Files[changed], current.Files[changed]);
+        Assert.True(current.Files[changed].LogicalBytes > initial.Files[changed].LogicalBytes);
+    }
+
+    [Fact]
+    public async Task RestartSharesPersistedBaselineButRevalidatesOfflineChanges()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-restart-seed-" + Guid.NewGuid().ToString("N")));
+        var root = Path.Combine(box.RunDirectory, "project"); Directory.CreateDirectory(root);
+        var same = Path.Combine(root, "same.bin"); File.WriteAllBytes(same, [1]);
+        var changed = Path.Combine(root, "changed.bin"); File.WriteAllBytes(changed, [1]);
+        var deleted = Path.Combine(root, "deleted.bin"); File.WriteAllBytes(deleted, [1]);
+        using var store = new Core.Storage.LocalStore(Path.Combine(box.RunDirectory, "data"));
+        Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(root, absolutePaths: true), store.LoadSnapshots("p")));
+        var baseline = store.LoadSnapshots("p");
+        File.WriteAllBytes(changed, [1, 2, 3]); File.Delete(deleted);
+        using var monitor = new DirectoryMonitor(root, absolutePaths: true, initialFiles: baseline);
+        // A seed remains explicitly stale until the first live scan completes.
+        var initial = monitor.Snapshot;
+        if (initial.CapturedAt == DateTimeOffset.MinValue)
+        {
+            Assert.Same(baseline, initial.Files);
+            Assert.NotEmpty(initial.Gaps);
+        }
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (monitor.Revision == 0 && DateTime.UtcNow < deadline) await Task.Delay(25);
+        Assert.True(monitor.Revision > 0);
+        var live = monitor.Snapshot;
+        Assert.Empty(live.Gaps);
+        Assert.Same(baseline[same], live.Files[same]);
+        Assert.NotSame(baseline[changed], live.Files[changed]);
+        Assert.Equal(3, live.Files[changed].LogicalBytes);
+        Assert.False(live.Files.ContainsKey(deleted));
+        Assert.True(baseline.ContainsKey(deleted));
+        Assert.Null(monitor.LastActivity);
+        Assert.True(store.SaveSnapshot("p", live, baseline));
+        Assert.DoesNotContain(store.QueryFiles(), f => f.Path == deleted);
+        Assert.Contains(store.Changes(DateTimeOffset.MinValue), change => change.Path == deleted && change.Kind == "消失");
     }
 
     [Fact]

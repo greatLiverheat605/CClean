@@ -82,8 +82,8 @@ public sealed class LocalStore : IDisposable
             initializedCommand.CommandText = "SELECT initialized FROM roots WHERE id=$p";
             initializedCommand.Parameters.AddWithValue("$p", project);
             var initial = initializedCommand.ExecuteScalar() is null;
-            var current = next.Files.Values.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
-            var changed = current.Values.Where(f => !previous.TryGetValue(f.Path, out var old) || f != old).ToArray();
+            var current = next.FilesByPath;
+            var changed = current.Values.Where(f => !previous.TryGetValue(f.Path, out var old) || f != old);
             foreach (var batch in changed.Chunk(500))
             {
                 space = VolumeSpaceReader.Read(Root);
@@ -172,28 +172,48 @@ public sealed class LocalStore : IDisposable
         }
     }
 
-    public StoreTotals Totals(string volumeRoot)
+    public StoreTotals Totals(string volumeRoot) => ReadTotals(null, null, Path.GetPathRoot(Path.GetFullPath(volumeRoot))!);
+
+    // Project growth describes files still in this scope; it is not the volume's historical net change.
+    public StoreTotals ProjectTotals(string project, string? root = null) => ReadTotals(project, root, null);
+
+    private StoreTotals ReadTotals(string? project, string? root, string? volume)
     {
         lock (sync)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT identity,logical,allocated,initial,json_extract(snapshot,'$.StreamsComplete'),json_extract(snapshot,'$.HasNamedStreams') FROM files WHERE substr(path,1,length($volume))=$volume COLLATE NOCASE";
-            command.Parameters.AddWithValue("$volume", Path.GetPathRoot(Path.GetFullPath(volumeRoot))!);
-            using var reader = command.ExecuteReader(); var identities = new HashSet<string>(); long logical = 0, allocated = 0, growth = 0; var unknown = 0; var count = 0;
-            while (reader.Read())
-            {
-                count++;
-                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2)) { unknown++; continue; }
-                if (!reader.GetBoolean(4) || reader.GetBoolean(5)) unknown++;
-                if (!identities.Add(reader.GetString(0))) continue;
-                logical += reader.GetInt64(1); allocated += reader.GetInt64(2);
-            }
-            reader.Close();
-            using var delta = connection.CreateCommand();
-            delta.CommandText = "SELECT COALESCE(SUM(logical),0) FROM baselines WHERE volume=$volume COLLATE NOCASE";
-            delta.Parameters.AddWithValue("$volume", Path.GetPathRoot(Path.GetFullPath(volumeRoot))!);
-            growth = logical - Convert.ToInt64(delta.ExecuteScalar());
-            return new(logical, allocated, growth, unknown, count);
+            // Aggregate in SQLite so every overview refresh does not allocate an identity string and
+            // a HashSet entry for every indexed file. The first stored path supplies a shared identity.
+            command.CommandText = """
+                WITH scoped AS (
+                    SELECT rowid,identity,logical,allocated,
+                        json_extract(snapshot,'$.StreamsComplete') AS streams_complete,
+                        json_extract(snapshot,'$.HasNamedStreams') AS named_streams
+                    FROM files
+                    WHERE ($project IS NULL OR project=$project)
+                      AND ($volume IS NULL OR substr(path,1,length($volume))=$volume COLLATE NOCASE)
+                      AND
+                """ + PathScope + """
+                ), unique_files AS (
+                    SELECT identity,MIN(rowid),logical,allocated FROM scoped
+                    WHERE identity IS NOT NULL AND logical IS NOT NULL AND allocated IS NOT NULL
+                    GROUP BY identity
+                )
+                SELECT COALESCE(SUM(logical),0),COALESCE(SUM(allocated),0),
+                    CASE WHEN $volume IS NULL THEN
+                        COALESCE(SUM(logical-COALESCE((SELECT logical FROM baselines WHERE baselines.identity=unique_files.identity),0)),0)
+                    ELSE COALESCE(SUM(logical),0)-(SELECT COALESCE(SUM(logical),0) FROM baselines WHERE volume=$volume COLLATE NOCASE) END,
+                    (SELECT COUNT(*) FROM scoped WHERE identity IS NULL OR logical IS NULL OR allocated IS NULL
+                        OR streams_complete IS NOT 1 OR named_streams IS NOT 0),
+                    (SELECT COUNT(*) FROM scoped)
+                FROM unique_files
+                """;
+            command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
+            command.Parameters.AddWithValue("$volume", (object?)volume ?? DBNull.Value);
+            BindPathScope(command, root);
+            using var reader = command.ExecuteReader();
+            reader.Read();
+            return new(reader.GetInt64(0), reader.GetInt64(1), reader.GetInt64(2), reader.GetInt32(3), reader.GetInt32(4));
         }
     }
 

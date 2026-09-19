@@ -60,6 +60,27 @@ public class FileMetadataTests
     }
 
     [Fact]
+    public void RepeatedReadsPreserveStreamSafetyWithoutLargePerFileAllocations()
+    {
+        using var box = Sandbox();
+        var ordinary = box.CreateFixture("ordinary.bin", 10);
+        var named = box.CreateFixture("named.bin", 10);
+        File.WriteAllText(named + ":extra", "synthetic", System.Text.Encoding.UTF8);
+        WindowsFileMetadata.Read(ordinary); WindowsFileMetadata.Read(named);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        const int reads = 64;
+        for (var i = 0; i < reads; i++)
+        {
+            var metadata = WindowsFileMetadata.Read(i % 2 == 0 ? ordinary : named);
+            Assert.True(metadata.StreamsComplete);
+            Assert.Equal(i % 2 != 0, metadata.HasNamedStreams);
+            Assert.Equal(i % 2 == 0, metadata.IsOrdinaryFile);
+        }
+        // The old 64 KiB-per-file stream buffer exceeds this generous allocation bound.
+        Assert.True(GC.GetAllocatedBytesForCurrentThread() - before < reads * 16 * 1024);
+    }
+
+    [Fact]
     public void SymbolicLinkIsNotFollowed()
     {
         using var box = Sandbox();

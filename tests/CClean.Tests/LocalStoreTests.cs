@@ -25,6 +25,8 @@ public class LocalStoreTests
         Assert.Equal(100, store.Totals(path).Logical);
         Assert.Equal(0, store.Totals(path).Growth);
         Assert.Equal(2, store.Totals(path).Files);
+        Assert.Equal(100, store.ProjectTotals("a", box.RunDirectory).Logical);
+        Assert.Equal(100, store.ProjectTotals("b", box.RunDirectory).Logical);
         var unknown = Core.Files.WindowsFileMetadata.Read(Path.Combine(box.RunDirectory, "missing.bin"));
         Assert.True(store.SaveSnapshot("c", Snapshot(unknown), store.LoadSnapshots("c")));
         Assert.Equal(1, store.Totals(path).Unknown);
@@ -53,8 +55,10 @@ public class LocalStoreTests
         Assert.Equal(-40, store.Totals(path).Growth);
     }
 
-    [Fact]
-    public void BaselineGrowthDeletionAndRestartAreAccurate()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BaselineGrowthDeletionAndRestartAreAccurate(bool absolutePaths)
     {
         using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-store-" + Guid.NewGuid().ToString("N")));
         var monitored = Path.Combine(box.RunDirectory, "monitored"); Directory.CreateDirectory(monitored);
@@ -62,17 +66,19 @@ public class LocalStoreTests
         var data = Path.Combine(box.RunDirectory, "data");
         using (var store = new LocalStore(data))
         {
-            Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(monitored), store.LoadSnapshots("p")));
+            Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(monitored, absolutePaths: absolutePaths), store.LoadSnapshots("p")));
             Assert.Equal(0, store.Totals(monitored).Growth);
             File.WriteAllBytes(file, new byte[160]);
-            Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(monitored), store.LoadSnapshots("p")));
+            Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(monitored, absolutePaths: absolutePaths), store.LoadSnapshots("p")));
             Assert.Equal(60, store.Totals(monitored).Growth);
+            Assert.Equal(60, store.ProjectTotals("p", monitored).Growth);
             var incomplete = new DirectorySnapshot(new Dictionary<string, Core.Files.FileSnapshot>(), ["Access denied"], DateTimeOffset.UtcNow);
             Assert.True(store.SaveSnapshot("p", incomplete, store.LoadSnapshots("p")));
             Assert.Single(store.QueryFiles());
             File.Delete(file);
-            Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(monitored), store.LoadSnapshots("p")));
+            Assert.True(store.SaveSnapshot("p", DirectoryScanner.Scan(monitored, absolutePaths: absolutePaths), store.LoadSnapshots("p")));
             Assert.Empty(store.QueryFiles());
+            Assert.Equal(new StoreTotals(0, 0, 0, 0, 0), store.ProjectTotals("p", monitored));
             Assert.Equal(-100, store.Totals(monitored).Growth);
         }
         using var reopened = new LocalStore(data);
@@ -94,6 +100,10 @@ public class LocalStoreTests
         Assert.Empty(store.QueryFiles(page: 1, project: "a", root: root));
         Assert.Empty(store.QueryFiles(project: "b", root: root));
         Assert.Single(store.QueryFiles(root: root));
+        Assert.Equal(32, store.ProjectTotals("a", root.ToUpperInvariant()).Logical);
+        Assert.Equal(1, store.ProjectTotals("a", root).Files);
+        Assert.Equal(0, store.ProjectTotals("b", root).Files);
+        Assert.Equal(20500, store.ProjectTotals("b", other).Logical);
         Assert.Equal(200, store.QueryFiles(project: "b", root: other).Count);
         Assert.Equal(5, store.QueryFiles(page: 1, project: "b", root: other).Count);
         var change = Assert.Single(store.Changes(DateTimeOffset.MinValue, 1, "a", root));

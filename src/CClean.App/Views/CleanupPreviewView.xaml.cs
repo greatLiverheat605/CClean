@@ -106,6 +106,7 @@ public partial class CleanupPreviewView : UserControl
             var result = await workspace.ExecuteCleanup(approved, getContext);
             var after = await Task.Run(() => volumes.ToDictionary(v => v, VolumeSpaceReader.Read));
             Summary.Text = result.Message;
+            Items.ItemsSource = null; // The old preview is no longer an actionable candidate list.
             Details.Text = $"{result.State}；已标记对象分配估算 {IndexedFile.FormatBytes(result.EstimatedDeletedBytes)}。\n" + string.Join("\n", volumes.Select(v => $"{v} 系统可用量变化 {(decimal)after[v].UserAvailableBytes - before[v].UserAvailableBytes:+#,##0;-#,##0;0} B（含其他进程影响，不能全归因于本次清理）。"));
         }
         catch (Exception error) { Summary.Text = "未继续执行：" + error.Message; }

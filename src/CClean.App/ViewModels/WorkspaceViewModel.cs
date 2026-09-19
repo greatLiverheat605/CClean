@@ -18,7 +18,7 @@ public sealed class WorkspaceViewModel : IDisposable
     private int calibrationIndex;
     private readonly Dictionary<Guid, long> revisions = [];
     private readonly Dictionary<Guid, long> recordedGaps = [];
-    private readonly Dictionary<Guid, Dictionary<string, FileSnapshot>> previous = [];
+    private readonly Dictionary<Guid, IReadOnlyDictionary<string, FileSnapshot>> previous = [];
     public LocalStore Store { get; }
     public Core.Sessions.SessionRegistry Sessions { get; }
     private readonly Core.Sessions.SessionDiscovery sessionDiscovery = new();
@@ -98,31 +98,35 @@ public sealed class WorkspaceViewModel : IDisposable
                     if (revision == 0 || revisions.GetValueOrDefault(entry.Key) == revision) continue;
                     var snapshot = entry.Value.Snapshot;
                     var gapsToRecord = entry.Value.NativeGaps + entry.Value.ApplicationGaps + entry.Value.ScanGaps;
+                    previous.TryGetValue(entry.Key, out var old);
+                    var lastRecordedGaps = recordedGaps.GetValueOrDefault(entry.Key);
                     var saved = await Task.Run(() =>
                     {
-                        if (gapsToRecord != recordedGaps.GetValueOrDefault(entry.Key))
-                        {
+                        if (gapsToRecord != lastRecordedGaps)
                             Store.RecordGap(entry.Key.ToString(), $"原生/队列/扫描累计缺口 {gapsToRecord}；补扫只恢复当前状态。", snapshot.CapturedAt);
-                            recordedGaps[entry.Key] = gapsToRecord;
-                        }
-                        if (!previous.TryGetValue(entry.Key, out var old)) previous[entry.Key] = old = Store.LoadSnapshots(entry.Key.ToString());
+                        old ??= Store.LoadSnapshots(entry.Key.ToString());
                         var success = Store.SaveSnapshot(entry.Key.ToString(), snapshot, old);
-                        if (success && snapshot.Gaps.Count == 0) previous[entry.Key] = snapshot.Files.Values.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
-                        else previous[entry.Key] = Store.LoadSnapshots(entry.Key.ToString());
-                        return success;
+                        var persisted = success && snapshot.Gaps.Count == 0 ? snapshot.FilesByPath :
+                            success ? Store.LoadSnapshots(entry.Key.ToString()) : old;
+                        return (Success: success, Previous: persisted);
                     });
                     if (disposed) break;
-                    if (saved)
+                    if (saved.Success)
                     {
-                        if (Monitors.TryGetValue(entry.Key, out var current) && ReferenceEquals(current, entry.Value)) revisions[entry.Key] = revision;
+                        if (Monitors.TryGetValue(entry.Key, out var current) && ReferenceEquals(current, entry.Value))
+                        {
+                            previous[entry.Key] = saved.Previous;
+                            recordedGaps[entry.Key] = gapsToRecord;
+                            revisions[entry.Key] = revision;
+                        }
                         Indexed?.Invoke();
                     }
                     else
                     {
                         collectionStopped = true;
                         Status = "空间或自身预算不足，已停止扩展监测和历史落盘；已有索引仍可查看。";
-                        foreach (var monitor in Monitors.Values) await Task.Run(monitor.Dispose);
-                        Monitors.Clear(); Changed?.Invoke(); break;
+                        foreach (var monitor in Monitors.Values.ToArray()) await Task.Run(monitor.Dispose);
+                        Monitors.Clear(); previous.Clear(); Changed?.Invoke(); break;
                     }
                 }
             }
@@ -133,7 +137,7 @@ public sealed class WorkspaceViewModel : IDisposable
                     collectionStopped = true;
                     Status = "索引不可写，已停止采集：" + error.Message;
                     foreach (var monitor in Monitors.Values.ToArray()) await Task.Run(monitor.Dispose);
-                    Monitors.Clear(); Changed?.Invoke();
+                    Monitors.Clear(); previous.Clear(); Changed?.Invoke();
                 }
             }
             finally { saving = false; }
@@ -183,6 +187,7 @@ public sealed class WorkspaceViewModel : IDisposable
             collectionStopped = true;
             foreach (var entry in Monitors.ToArray())
                 if (Monitors.Remove(entry.Key)) await Task.Run(entry.Value.Dispose);
+            previous.Clear();
             Status = "空间或自身预算不足，采集已暂停；已有索引可能过期，容量查询仍可用。";
             Changed?.Invoke();
         }
@@ -193,13 +198,16 @@ public sealed class WorkspaceViewModel : IDisposable
         if (collectionStopped || disposed || Monitors.ContainsKey(project.Id)) return;
         try
         {
-            var monitor = await Task.Run(() =>
+            var started = await Task.Run(() =>
             {
                 Store.RecordGap(project.Id.ToString(), "开始或恢复观察；此前的离线区间没有完整历史。");
-                return new DirectoryMonitor(project.Root);
+                var baseline = Store.LoadSnapshots(project.Id.ToString());
+                return (Monitor: new DirectoryMonitor(project.Root, absolutePaths: true, initialFiles: baseline), Baseline: baseline);
             });
-            if (disposed) { monitor.Dispose(); return; }
-            Monitors.Add(project.Id, monitor);
+            if (disposed || collectionStopped || Projects.Any(p => p.Id == project.Id && p.Paused) || Monitors.ContainsKey(project.Id))
+            { await Task.Run(started.Monitor.Dispose); return; }
+            previous[project.Id] = started.Baseline;
+            Monitors.Add(project.Id, started.Monitor);
             revisions.Remove(project.Id);
             errors.Remove(project.Id);
             Status = "正在建立基线；历史仅从本次观察开始。";
@@ -218,7 +226,11 @@ public sealed class WorkspaceViewModel : IDisposable
         Registry.SetPaused(project.Id, !project.Paused);
         var index = Projects.IndexOf(project);
         Projects[index] = project with { Paused = !project.Paused };
-        if (Monitors.Remove(project.Id, out var monitor)) await Task.Run(monitor.Dispose);
+        if (Monitors.Remove(project.Id, out var monitor))
+        {
+            previous.Remove(project.Id);
+            await Task.Run(monitor.Dispose);
+        }
         else await Start(Projects[index]);
         await Task.Run(() => Store.RecordGap(project.Id.ToString(), !project.Paused ? "用户暂停观察，后续区间不可见。" : "恢复观察，正在校准当前状态。"));
         Status = !project.Paused ? "已暂停；暂停区间是历史缺口。" : "已恢复；正在重新校准当前状态。";

@@ -32,7 +32,7 @@ public partial class SessionsView : UserControl
     {
         var selected = Discovered.SelectedItem as DiscoveredSession;
         var query = DiscoverySearch.Text.Trim();
-        var rows = workspace.DiscoveredSessions.Where(s => (scope is null || Core.Cleanup.ProtectionPolicy.Contains(scope.Root, s.ProjectRoot)) && (s.ProjectRoot + " " + s.Tool + " " + s.Id).Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var rows = workspace.DiscoveredSessions.Where(s => (scope is null || ProjectCatalog.IncludesSession(scope, s)) && (s.ProjectRoot + " " + s.Tool + " " + s.Id).Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
         Discovered.ItemsSource = rows;
         Discovered.SelectedItem = rows.FirstOrDefault(s => s.Tool == selected?.Tool && s.Id == selected.Id);
         DiscoveryFeedback.Text = workspace.DiscoveryStatus + (rows.Length == 0 ? " 当前无匹配记录；可使用手动会话。" : $" 当前显示 {rows.Length} 条。");

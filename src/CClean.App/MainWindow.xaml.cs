@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer capacityTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private bool capacityReading;
     private bool dark;
+    private ViewModels.AppPreferences preferences = new();
     private ViewModels.WorkspaceViewModel? workspace;
     private Views.ProjectSetupView? projectSetup;
     private Views.OverviewView? overview;
@@ -57,9 +58,10 @@ public partial class MainWindow : Window
         try
         {
             workspace = new();
+            preferences = ViewModels.AppPreferences.Load(workspace.DataDirectory); dark = preferences.Dark; ApplyTheme();
             workspace.Changed += () => Status.Text = workspace.Status;
             projectSetup = new(workspace);
-            overview = new(workspace); workbench = new(workspace);
+            overview = new(workspace); workbench = new(workspace, preferences);
             cleanup = new(workspace);
             cleanupHistory = new(workspace);
             overview.CrashDumpPreviewRequested += async () => { NavigateTo("清理中心"); await cleanup.PreviewCrashDumps(); };
@@ -104,7 +106,12 @@ public partial class MainWindow : Window
 
     private void ToggleTheme(object sender, RoutedEventArgs e)
     {
-        dark = !dark;
+        dark = !dark; ApplyTheme(); preferences.Dark = dark;
+        try { if (workspace is not null) preferences.Save(workspace.DataDirectory); }
+        catch (Exception error) { Status.Text = "主题已切换，但保存失败：" + error.Message; }
+    }
+    private void ApplyTheme()
+    {
         var colors = dark ? new[] { "#171D25", "#222B36", "#F2F5F8", "#B9C5D2", "#8BB9F7", "#465568", "#142237" } :
             new[] { "#F5F6F8", "#FFFFFF", "#17212B", "#526170", "#245BA8", "#D5DCE4", "#FFFFFF" };
         var keys = new[] { "Surface", "Panel", "Ink", "Muted", "Accent", "Line", "OnAccent" };

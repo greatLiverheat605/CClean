@@ -9,6 +9,7 @@ public sealed class DirectoryMonitor : IDisposable
     private readonly CancellationTokenSource stop = new();
     private readonly Task worker;
     private readonly string root;
+    private readonly bool absolutePaths;
     private readonly object sync = new();
     private DirectorySnapshot snapshot = new(new Dictionary<string, Files.FileSnapshot>(), ["Initial scan pending"], DateTimeOffset.MinValue);
     private long applicationGaps, nativeGaps, scanGaps, revision;
@@ -22,9 +23,14 @@ public sealed class DirectoryMonitor : IDisposable
     public DirectorySnapshot Snapshot { get { lock (sync) return snapshot; } }
 
     // beforeNotification is a controlled probe barrier; it never synthesizes overflow errors.
-    public DirectoryMonitor(string root, int queueCapacity = 128, Action? beforeNotification = null)
+    public DirectoryMonitor(string root, int queueCapacity = 128, Action? beforeNotification = null, bool absolutePaths = false,
+        IReadOnlyDictionary<string, Files.FileSnapshot>? initialFiles = null)
     {
         this.root = Path.GetFullPath(root);
+        this.absolutePaths = absolutePaths;
+        // A persisted seed only avoids duplicate metadata objects; it is not current coverage.
+        if (initialFiles is not null)
+            snapshot = new(initialFiles, ["Stored baseline awaiting live scan"], DateTimeOffset.MinValue) { PathsAreAbsolute = absolutePaths };
         using var boundary = new Experiments.DirectoryLease(this.root);
         if (queueCapacity <= 0) throw new ArgumentOutOfRangeException(nameof(queueCapacity));
         hints = Channel.CreateBounded<bool>(new BoundedChannelOptions(queueCapacity) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true });
@@ -63,7 +69,7 @@ public sealed class DirectoryMonitor : IDisposable
             {
                 while (hints.Reader.TryRead(out _)) { }
                 await Task.Delay(100, stop.Token);
-                var next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files);
+                var next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files, absolutePaths: absolutePaths);
                 if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
                 lock (sync) snapshot = next;
                 Interlocked.Increment(ref revision);
