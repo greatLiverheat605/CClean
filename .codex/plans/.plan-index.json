@@ -17,7 +17,8 @@
       "status": "in_progress"
     }
   ],
-  "validationSummary": "Original P0 statuses retained; 0.1.2 installed and started with runtime data preserved; 49 tests and two Windows CI runs passed; real dump deletion not executed; awaiting user acceptance; no release approval",
+  "validationSummary": "0.1.4 installed with runtime preserved; 53 tests and two Windows CI runs passed; session discovery and seven-page UI reviewed; original performance/release gaps retained; awaiting user acceptance",
   "personalUseEvidence": "docs/testing/personal-acceptance.md",
-  "storageExperienceEvidence": "docs/testing/storage-home-acceptance.md"
+  "storageExperienceEvidence": "docs/testing/storage-home-acceptance.md",
+  "implementedFeatureAudit": "docs/audit/implemented-features.md"
 }

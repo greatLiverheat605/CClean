@@ -1235,7 +1235,7 @@
     },
     "sessionDiscovery": {
       "version": "0.1.4",
-      "status": "implementation_tests_ui_passed_packaging",
+      "status": "passed_installed_awaiting_user_acceptance",
       "subplan": "2026-09-17_cclean-development/sub-025-session-discovery-audit.md",
       "audit": "docs/audit/implemented-features.md",
       "testsPassed": 53,
@@ -1245,7 +1245,14 @@
       ],
       "zcode": "not_supported",
       "processState": "unknown_protected",
-      "realDeletion": "not_executed"
+      "realDeletion": "not_executed",
+      "packageCommit": "2d3e733afd50ddd3a54b0c89498c3ff0555c3468",
+      "receipt": "artifacts/session-discovery-delivery.json",
+      "ciRuns": [
+        35442743165,
+        35442741454
+      ],
+      "runtimePreserved": true
     }
   }
 }
