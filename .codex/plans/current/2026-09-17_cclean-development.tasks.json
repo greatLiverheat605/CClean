@@ -1292,7 +1292,7 @@
       "runtimePreserved": true,
       "reliability017": {
         "version": "0.1.7",
-        "status": "validated_memory_threshold_failed_package_preparing",
+        "status": "package_ready_upgrade_waiting_for_016_observation",
         "testsPassed": 93,
         "watcherHealth": "fault_latched_until_rebuilt",
         "collectorFailure": "gap_published_snapshot_retained_dispose_safe",
@@ -1312,7 +1312,16 @@
         "evidence": "docs/testing/reliability-017.md",
         "stability016": "17h45m_2130_samples_no_gaps_not_24h",
         "dataGrowth016Bytes": 447952,
-        "receipt": "artifacts/reliability-017-delivery.json"
+        "receipt": "artifacts/reliability-017-delivery.json",
+        "packageCommit": "4f6783ff66efd2dfcc227ef0aaeabd77b2ff411a",
+        "ciRuns": [
+          35499803389,
+          35499800738
+        ],
+        "ciConclusion": "both_success",
+        "finalPayloadRecovery": "passed",
+        "finalPayloadUi": "extra_smoke_launch_rejected_by_automatic_approval_policy_no_detailed_reason_returned",
+        "followUpAutomation": "cclean_2245_local_finish_observation_then_upgrade"
       }
     }
   }
