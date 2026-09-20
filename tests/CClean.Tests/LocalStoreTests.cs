@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using CClean.Core.Experiments;
 using CClean.Core.Monitoring;
 using CClean.Core.Storage;
@@ -85,6 +87,81 @@ public class LocalStoreTests
         Assert.Equal(-100, reopened.Totals(monitored).Growth);
         Assert.Contains(reopened.Changes(DateTimeOffset.MinValue), change => change.Kind == "初始存量");
     }
+    [Theory]
+    [InlineData("complete")]
+    [InlineData("unknown")]
+    [InlineData("missing")]
+    [InlineData("null_boolean")]
+    [InlineData("string_number")]
+    [InlineData("number_boolean")]
+    [InlineData("duplicate_boolean")]
+    [InlineData("duplicate_exclusion")]
+    [InlineData("negative_links")]
+    [InlineData("large_integer")]
+    [InlineData("large_attributes")]
+    [InlineData("null_record")]
+    [InlineData("array_record")]
+    [InlineData("malformed")]
+    [InlineData("unknown_key")]
+    [InlineData("unknown_nested_deep")]
+    [InlineData("computed_object")]
+    [InlineData("duplicate_computed")]
+    [InlineData("unicode_escape")]
+    [InlineData("nul_path")]
+    [InlineData("lone_high_surrogate_path")]
+    [InlineData("lone_high_surrogate_exclusion")]
+    [InlineData("lone_low_surrogate_exclusion")]
+    public void SnapshotProjectionPreservesLegacyParserSemantics(string shape)
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-json-shape-" + Guid.NewGuid().ToString("N")));
+        var data = Path.Combine(box.RunDirectory, "data");
+        using var store = new LocalStore(data);
+        var path = Path.Combine(box.RunDirectory, "中文.bin");
+        var file = new Core.Files.FileSnapshot(path, "synthetic-id", 17, 4096, 1, FileAttributes.Archive, 123, 456, true, false, null);
+        var json = JsonSerializer.Serialize(file);
+        json = shape switch
+        {
+            "unknown" => JsonSerializer.Serialize(file with { Identity = null, LogicalBytes = null, AllocatedBytes = null, StreamsComplete = false, Exclusion = "元数据未知" }),
+            "missing" => JsonSerializer.Serialize(new { Path = path }),
+            "null_boolean" => json.Replace("\"StreamsComplete\":true", "\"StreamsComplete\":null"),
+            "string_number" => json.Replace("\"LogicalBytes\":17", "\"LogicalBytes\":\"17\""),
+            "number_boolean" => json.Replace("\"StreamsComplete\":true", "\"StreamsComplete\":1"),
+            "duplicate_boolean" => json[..^1] + ",\"StreamsComplete\":false}",
+            "duplicate_exclusion" => json[..^1] + ",\"Exclusion\":\"protected\"}",
+            "negative_links" => json.Replace("\"LinkCount\":1", "\"LinkCount\":-1"),
+            "large_integer" => json.Replace("\"LogicalBytes\":17", "\"LogicalBytes\":999999999999999999999999999"),
+            "large_attributes" => json.Replace("\"Attributes\":32", "\"Attributes\":2147483648"),
+            "null_record" => "null",
+            "array_record" => "[]",
+            "malformed" => "{",
+            "unknown_key" => json[..^1] + ",\"Unexpected\":true}",
+            "unknown_nested_deep" => json[..^1] + ",\"Unexpected\":" + string.Concat(Enumerable.Repeat("{\"n\":", 65)) + "0" + new string('}', 65) + "}",
+            "computed_object" => json.Replace("\"IsOrdinaryFile\":true", "\"IsOrdinaryFile\":{\"n\":null}"),
+            "duplicate_computed" => json[..^1] + ",\"IsOrdinaryFile\":false}",
+            "unicode_escape" => json.Replace("\"Exclusion\":null", "\"Exclusion\":\"\\u0061\\u0000\\u4E2D\\uD83D\\uDE00\""),
+            "nul_path" => json.Replace(JsonSerializer.Serialize(path), "\"prefix\\u0000suffix\""),
+            "lone_high_surrogate_path" => json.Replace(JsonSerializer.Serialize(path), "\"\\uD800\""),
+            "lone_high_surrogate_exclusion" => json.Replace("\"Exclusion\":null", "\"Exclusion\":\"\\uD800\""),
+            "lone_low_surrogate_exclusion" => json.Replace("\"Exclusion\":null", "\"Exclusion\":\"\\uDC00\""),
+            _ => json
+        };
+        using (var writer = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(data, "index.db"), Pooling = false }.ToString()))
+        {
+            writer.Open();
+            using var insert = writer.CreateCommand();
+            insert.CommandText = "INSERT INTO files VALUES('p',$path,NULL,NULL,NULL,0,$json)";
+            insert.Parameters.AddWithValue("$path", path); insert.Parameters.AddWithValue("$json", json); insert.ExecuteNonQuery();
+        }
+        Core.Files.FileSnapshot? expected = null;
+        var legacyFailure = Record.Exception(() =>
+        {
+            expected = JsonSerializer.Deserialize<Core.Files.FileSnapshot>(json)!;
+            var previous = new Dictionary<string, Core.Files.FileSnapshot> { [expected.Path] = expected };
+        });
+        if (legacyFailure is not null) Assert.Throws(legacyFailure.GetType(), () => store.LoadSnapshots("p"));
+        else Assert.Equal(expected, Assert.Single(store.LoadSnapshots("p")).Value);
+    }
+
     [Fact]
     public void ProjectAndRootScopeApplyBeforePagingAndHistoryLimits()
     {

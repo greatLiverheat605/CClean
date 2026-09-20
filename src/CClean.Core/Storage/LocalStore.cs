@@ -58,18 +58,55 @@ public sealed class LocalStore : IDisposable
     {
         lock (sync)
         {
+            using var count = connection.CreateCommand();
+            count.CommandText = "SELECT COUNT(*) FROM (SELECT 1 FROM files WHERE project=$p LIMIT 100000)";
+            count.Parameters.AddWithValue("$p", project);
+            var capacity = Convert.ToInt32(count.ExecuteScalar());
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT path,snapshot FROM files WHERE project=$p LIMIT 100000";
+            command.CommandText = SnapshotProjection;
             command.Parameters.AddWithValue("$p", project);
             using var reader = command.ExecuteReader();
-            var result = new Dictionary<string, FileSnapshot>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, FileSnapshot>(capacity, StringComparer.OrdinalIgnoreCase);
             while (reader.Read())
             {
-                var file = JsonSerializer.Deserialize<FileSnapshot>(reader.GetString(1))!;
+                // Normal records need only their retained fields, not a full UTF-16 JSON copy and
+                // deserializer constructor arguments. Legacy or unusual JSON retains the old parser.
+                var file = !reader.IsDBNull(0) ? JsonSerializer.Deserialize<FileSnapshot>(reader.GetString(0))! :
+                    new FileSnapshot(reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2),
+                        reader.IsDBNull(3) ? null : reader.GetInt64(3), reader.IsDBNull(4) ? null : reader.GetInt64(4),
+                        checked((uint)reader.GetInt64(5)), (FileAttributes)checked((int)reader.GetInt64(6)),
+                        reader.GetInt64(7), reader.GetInt64(8), reader.GetBoolean(9), reader.GetBoolean(10),
+                        reader.IsDBNull(11) ? null : reader.GetString(11));
                 result[file.Path] = file;
             }
             return result;
         }
+    }
+
+    private static readonly string SnapshotProjection = CreateSnapshotProjection();
+    private static string CreateSnapshotProjection()
+    {
+        string[] names = ["Path", "Identity", "LogicalBytes", "AllocatedBytes", "LinkCount", "Attributes",
+            "ModifiedTime", "ChangeTime", "StreamsComplete", "HasNamedStreams", "Exclusion"];
+        string[] types = ["'text'", "'text','null'", "'integer','null'", "'integer','null'", "'integer'", "'integer'",
+            "'integer'", "'integer'", "'true','false'", "'true','false'", "'text','null'"];
+        var values = names.Select(name => $"json_extract(persisted.json,'$.{name}')").ToArray();
+        var checks = names.Select((name, i) => $"json_type(persisted.json,'$.{name}') IN ({types[i]})").ToList();
+        // SQLite selects the first duplicate property; System.Text.Json selects the last. Such
+        // records, missing fields and malformed/out-of-range values must use the original parser.
+        checks.Add("json_type(persisted.json)='object'");
+        // SQLite tolerates isolated surrogate escapes; keep all surrogate decoding in the original parser.
+        checks.Add("""snapshot NOT GLOB '*\u[dD][89aAbBcCdDeEfF][0-9a-fA-F][0-9a-fA-F]*'""");
+        checks.Add("(SELECT COUNT(*) FROM json_each(persisted.json) WHERE key IN (" + string.Join(',', names.Select(name => $"'{name}'")) + "))=11");
+        checks.Add("NOT EXISTS (SELECT key FROM json_each(persisted.json) GROUP BY key HAVING key NOT IN (" +
+            string.Join(',', names.Select(name => $"'{name}'")) + ",'IsOrdinaryFile') OR " +
+            "(key='IsOrdinaryFile' AND (COUNT(*)>1 OR MIN(type IN ('true','false'))=0)))");
+        foreach (var i in new[] { 2, 3, 4, 5, 6, 7 }) checks.Add($"typeof({values[i]}) IN ('integer','null')");
+        checks.Add($"{values[4]} BETWEEN 0 AND 4294967295");
+        checks.Add($"{values[5]} BETWEEN -2147483648 AND 2147483647");
+        return "WITH persisted AS (SELECT snapshot,CASE WHEN json_valid(snapshot) THEN snapshot ELSE 'null' END AS json " +
+            "FROM files WHERE project=$p LIMIT 100000) SELECT CASE WHEN " + string.Join(" AND ", checks) +
+            " THEN NULL ELSE snapshot END," + string.Join(',', values) + " FROM persisted";
     }
 
     public bool SaveSnapshot(string project, DirectorySnapshot next, IReadOnlyDictionary<string, FileSnapshot> previous)

@@ -12,7 +12,7 @@ string? caseName = null;
 try
 {
     var options = new Dictionary<string, string>(StringComparer.Ordinal);
-    string[] known = ["--case", "--sandbox", "--output", "--max-fixture-bytes", "--reserve-free-bytes", "--file-count", "--logical-bytes", "--quota-root", "--sample-root", "--checkpoint"];
+    string[] known = ["--case", "--sandbox", "--output", "--max-fixture-bytes", "--reserve-free-bytes", "--file-count", "--logical-bytes", "--quota-root", "--sample-root", "--checkpoint", "--app-path"];
     if (args.Length == 0 || args.Length % 2 != 0) throw new ExperimentRefusedException("Expected --name value pairs.", 2);
     for (var i = 0; i < args.Length; i += 2)
         if (!known.Contains(args[i]) || !options.TryAdd(args[i], args[i + 1]))
@@ -32,7 +32,7 @@ try
         reportDirectory = Path.Combine(Path.GetDirectoryName(output)!, Path.GetFileNameWithoutExtension(output) + "-" + runId);
         Directory.CreateDirectory(reportDirectory);
     }
-    if (caseName is not ("environment" or "metadata" or "watcher" or "watcher-overflow" or "deletion-safety" or "cache-rule" or "cache-product" or "cleanup-crashes" or "cleanup-crash-child" or "product-quota" or "product-audit-full" or "storage-budget" or "index-scale" or "index-rescan" or "benchmark" or "timeline-fixture")) throw new ExperimentRefusedException($"Case not implemented: {caseName}.", 2);
+    if (caseName is not ("environment" or "metadata" or "watcher" or "watcher-overflow" or "deletion-safety" or "cache-rule" or "cache-product" or "cleanup-crashes" or "cleanup-crash-child" or "app-recovery" or "product-quota" or "product-audit-full" or "storage-budget" or "index-scale" or "index-rescan" or "benchmark" or "timeline-fixture")) throw new ExperimentRefusedException($"Case not implemented: {caseName}.", 2);
     var budget = Number("--max-fixture-bytes", ExperimentSandbox.DefaultBudget);
     var reserve = Number("--reserve-free-bytes", ExperimentSandbox.DefaultReserve);
     var count = Number("--file-count", 1);
@@ -51,6 +51,7 @@ try
     using var sandbox = new ExperimentSandbox(sandboxPath, budget, reserve);
     if (caseName == "cleanup-crash-child") CClean.Poc.RecoveryProbe.Child(sandbox, Required("--sample-root"), Required("--checkpoint"));
     else if (caseName == "cleanup-crashes") CClean.Poc.RecoveryProbe.Run(sandbox, checks);
+    else if (caseName == "app-recovery") CClean.Poc.AppRecoveryProbe.Run(sandbox, checks, Required("--app-path"));
     else if (caseName is "product-quota" or "product-audit-full") CClean.Poc.ProductQuotaProbe.Run(sandbox, Required("--quota-root"), checks, caseName == "product-audit-full");
     else if (caseName == "timeline-fixture")
     {

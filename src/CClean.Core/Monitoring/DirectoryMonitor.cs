@@ -12,15 +12,21 @@ public sealed class DirectoryMonitor : IDisposable
     private readonly bool absolutePaths;
     private readonly object sync = new();
     private DirectorySnapshot snapshot = new(new Dictionary<string, Files.FileSnapshot>(), ["Initial scan pending"], DateTimeOffset.MinValue);
-    private long applicationGaps, nativeGaps, scanGaps, revision;
+    private long applicationGaps, nativeGaps, scanGaps, watcherErrors, revision;
     private int disposed;
     private long lastActivityTicks;
     public DateTimeOffset? LastActivity => Interlocked.Read(ref lastActivityTicks) is var ticks && ticks != 0 ? new DateTimeOffset(ticks, TimeSpan.Zero) : null;
     public long ApplicationGaps => Interlocked.Read(ref applicationGaps);
     public long NativeGaps => Interlocked.Read(ref nativeGaps);
     public long ScanGaps => Interlocked.Read(ref scanGaps);
+    public long WatcherErrors => Interlocked.Read(ref watcherErrors);
     public long Revision => Interlocked.Read(ref revision);
     public DirectorySnapshot Snapshot { get { lock (sync) return snapshot; } }
+    // A current snapshot does not repair failed native observation or a stopped collector.
+    public bool HasContinuousObservation => Volatile.Read(ref disposed) == 0 && !worker.IsCompleted &&
+        Revision > 0 && Snapshot.Gaps.Count == 0 && NativeGaps == 0 && ApplicationGaps == 0 && WatcherErrors == 0;
+    // Controlled collector-failure test hook, not evidence of a real filesystem failure.
+    internal Action? BeforeScan { get; set; }
 
     // beforeNotification is a controlled probe barrier; it never synthesizes overflow errors.
     public DirectoryMonitor(string root, int queueCapacity = 128, Action? beforeNotification = null, bool absolutePaths = false,
@@ -44,15 +50,24 @@ public sealed class DirectoryMonitor : IDisposable
         watcher.Changed += Changed;
         watcher.Deleted += Changed;
         watcher.Renamed += (sender, args) => Changed(sender, args);
-        watcher.Error += (_, args) =>
-        {
-            if (args.GetException() is InternalBufferOverflowException) Interlocked.Increment(ref nativeGaps);
-            else Interlocked.Increment(ref scanGaps);
-            Hint();
-        };
+        watcher.Error += (_, args) => ReportWatcherError(args.GetException());
         // Events arriving during the initial scan schedule another scan.
         watcher.EnableRaisingEvents = true;
         worker = Task.Run(Collect);
+        Hint();
+    }
+
+    // Shared with controlled error-reporting tests; injection is not evidence of real kernel overflow.
+    internal void ReportWatcherError(Exception error)
+    {
+        if (Volatile.Read(ref disposed) != 0) return;
+        if (error is InternalBufferOverflowException) Interlocked.Increment(ref nativeGaps);
+        else
+        {
+            Interlocked.Increment(ref watcherErrors);
+            // Keep the failure in the existing persisted cumulative gap count as well.
+            Interlocked.Increment(ref scanGaps);
+        }
         Hint();
     }
 
@@ -69,6 +84,8 @@ public sealed class DirectoryMonitor : IDisposable
             {
                 while (hints.Reader.TryRead(out _)) { }
                 await Task.Delay(100, stop.Token);
+                stop.Token.ThrowIfCancellationRequested();
+                BeforeScan?.Invoke();
                 var next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files, absolutePaths: absolutePaths);
                 if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
                 lock (sync) snapshot = next;
@@ -76,15 +93,26 @@ public sealed class DirectoryMonitor : IDisposable
             }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            Interlocked.Increment(ref scanGaps);
+            lock (sync)
+                snapshot = snapshot with { Gaps = new[] { "采集已停止：" + error.Message }.Concat(snapshot.Gaps).Take(1000).ToArray() };
+            // Publish the failure to the existing persistence/status loop and leave collection stopped.
+            Interlocked.Increment(ref revision);
+        }
     }
 
     public void Rescan() => Hint();
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-        watcher.Dispose();
-        stop.Cancel();
-        worker.GetAwaiter().GetResult();
-        stop.Dispose();
+        try
+        {
+            watcher.Dispose();
+            stop.Cancel();
+            worker.GetAwaiter().GetResult();
+        }
+        finally { stop.Dispose(); }
     }
 }

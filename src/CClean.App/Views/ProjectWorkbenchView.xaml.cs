@@ -109,7 +109,8 @@ public partial class ProjectWorkbenchView : UserControl
             if (selected?.Root != project.Root || request != summaryRevision) return;
             var monitor = workspace.Monitors.GetValueOrDefault(project.RegistrationId.Value);
             var coverage = project.Paused ? "监测暂停，索引可能过期" : monitor is null || monitor.Revision == 0 ? "正在建立基线或范围不可访问" :
-                monitor.Snapshot.Gaps.Count > 0 ? "部分覆盖，存在扫描缺口" : "已取得登记范围当前索引";
+                monitor.Snapshot.Gaps.Count > 0 ? "部分覆盖，存在扫描缺口" : !monitor.HasContinuousObservation ?
+                "已有索引，实时观察不完整；清理保持保护" : "已取得登记范围当前索引";
             ProjectSummary.Text = $"已索引 {totals.Files:N0} 文件  ·  逻辑 {IndexedFile.FormatBytes(totals.Logical)}  ·  分配估算 {IndexedFile.FormatBytes(totals.Allocated)}  ·  现存文件增长 {IndexedFile.FormatBytes(totals.Growth)}" +
                 $"\n{coverage}；未知对象 {totals.Unknown:N0} 项。清理候选：{cleanupSummary}。";
         }

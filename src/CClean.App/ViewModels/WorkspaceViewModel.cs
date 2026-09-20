@@ -83,9 +83,11 @@ public sealed class WorkspaceViewModel : IDisposable
                 nextCalibration = DateTimeOffset.UtcNow.AddMinutes(15d / collectors.Length);
             }
             var ready = Monitors.Values.Count(m => m.Revision > 0);
+            var reliable = Monitors.Values.Count(m => m.HasContinuousObservation);
             var gaps = Monitors.Values.Sum(m => m.NativeGaps + m.ApplicationGaps + m.ScanGaps);
             var measured = ready == 0 ? "尚未取得当前文件数据" : $"已知 {Monitors.Values.Sum(m => m.Snapshot.Files.Count)} 个文件";
-            Status = $"已覆盖 {ready}/{Projects.Count} 个登记根；{measured}；缺口提示 {gaps}；暂停 {Projects.Count(p => p.Paused)}。仅代表登记范围。";
+            Status = $"可靠观察 {reliable}/{Projects.Count} 个登记根；{measured}；缺口提示 {gaps}；暂停 {Projects.Count(p => p.Paused)}。仅代表登记范围。";
+            if (ready > reliable) Status += " 观察不完整的范围保持清理保护，可暂停后恢复监测。";
             if (errors.Count > 0) Status += " 不可访问：" + errors.Values.First();
             Changed?.Invoke();
             if (saving || disposed) return;
@@ -156,7 +158,7 @@ public sealed class WorkspaceViewModel : IDisposable
     {
         bool Known(string root) => Projects.Any(p =>
             (root.Equals(p.Root, StringComparison.OrdinalIgnoreCase) || root.StartsWith(p.Root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) &&
-            Monitors.TryGetValue(p.Id, out var m) && m.Revision > 0 && m.Snapshot.Gaps.Count == 0 && m.NativeGaps + m.ApplicationGaps == 0);
+            Monitors.TryGetValue(p.Id, out var m) && m.HasContinuousObservation);
         var snapshot = Sessions.Activity(Projects, Known);
         var scopes = snapshot.Scopes.Select(s => Projects.Any(p => ProjectRegistry.Overlaps(p.Root, s.Root) &&
             Monitors.TryGetValue(p.Id, out var m) && m.LastActivity > DateTimeOffset.UtcNow.AddMinutes(-30))

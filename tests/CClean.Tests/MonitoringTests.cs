@@ -86,6 +86,75 @@ public class MonitoringTests
     }
 
     [Fact]
+    public async Task ReportedWatcherFailureSurvivesCompleteRescanUntilMonitorIsRebuilt()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-watcher-health-" + Guid.NewGuid().ToString("N")));
+        box.CreateFixture("known.bin", 10);
+        async Task WaitFor(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(15);
+            while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(25);
+            Assert.True(condition());
+        }
+        using var monitor = new DirectoryMonitor(box.RunDirectory);
+        await WaitFor(() => monitor.Revision > 0);
+        Assert.True(monitor.HasContinuousObservation);
+
+        // Exercise the real error handler's state transition without claiming actual native overflow.
+        monitor.ReportWatcherError(new IOException("Synthetic non-overflow watcher failure"));
+        Assert.Equal(1, monitor.WatcherErrors);
+        Assert.Equal(0, monitor.NativeGaps);
+        Assert.True(monitor.ScanGaps > 0);
+        Assert.False(monitor.HasContinuousObservation);
+        var revision = monitor.Revision;
+        monitor.Rescan();
+        await WaitFor(() => monitor.Revision > revision);
+        Assert.Empty(monitor.Snapshot.Gaps);
+        Assert.Single(monitor.Snapshot.Files);
+        Assert.Equal(0, monitor.ApplicationGaps);
+        Assert.False(monitor.HasContinuousObservation);
+
+        monitor.Dispose();
+        Assert.False(monitor.HasContinuousObservation);
+        using var rebuilt = new DirectoryMonitor(box.RunDirectory);
+        await WaitFor(() => rebuilt.Revision > 0);
+        Assert.Equal(0, rebuilt.WatcherErrors);
+        Assert.True(rebuilt.HasContinuousObservation);
+        rebuilt.Dispose();
+        Assert.False(rebuilt.HasContinuousObservation);
+    }
+
+    [Fact]
+    public async Task ControlledCollectorFailurePublishesGapAndDoesNotBreakDisposal()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-collector-failure-" + Guid.NewGuid().ToString("N")));
+        box.CreateFixture("retained.bin", 10);
+        using var monitor = new DirectoryMonitor(box.RunDirectory);
+        async Task WaitFor(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(15);
+            while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(25);
+            Assert.True(condition());
+        }
+        await WaitFor(() => monitor.Revision > 0);
+        Assert.True(monitor.HasContinuousObservation);
+        var revision = monitor.Revision;
+        var before = monitor.Snapshot;
+        monitor.BeforeScan = () => throw new InvalidOperationException("controlled collector failure");
+        monitor.Rescan();
+        await WaitFor(() => monitor.Revision > revision);
+        Assert.False(monitor.HasContinuousObservation);
+        Assert.True(monitor.ScanGaps > 0);
+        Assert.Equal(0, monitor.NativeGaps);
+        Assert.Equal(0, monitor.WatcherErrors);
+        Assert.Same(before.Files, monitor.Snapshot.Files);
+        Assert.Contains(monitor.Snapshot.Gaps, gap => gap.Contains("controlled collector failure"));
+        Assert.Null(Record.Exception(monitor.Dispose));
+        Assert.False(monitor.HasContinuousObservation);
+        Assert.Null(Record.Exception(monitor.Dispose));
+    }
+
+    [Fact]
     public async Task ChangesConvergeAndApplicationOverflowRemainsVisible()
     {
         using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-monitor-" + Guid.NewGuid().ToString("N")));
@@ -108,5 +177,6 @@ public class MonitoringTests
         Assert.All(monitor.Snapshot.Files, pair => Assert.Equal(truth[pair.Key], pair.Value.LogicalBytes));
         Assert.True(monitor.ApplicationGaps > 0);
         Assert.Empty(monitor.Snapshot.Gaps);
+        Assert.False(monitor.HasContinuousObservation);
     }
 }
