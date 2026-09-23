@@ -1282,7 +1282,7 @@
       "memoryPassed": false,
       "cpuPercent": 0.533,
       "cpuPassed": true,
-      "stability": "24h_final_build_observation_running_multiday_pending",
+      "stability": "016_completed_24h_017_multiday_pending",
       "receipt": "artifacts/product-completion-delivery.json",
       "packageCommit": "b2cbcf1d0f4c0c34e70e50eacbb4567d2ea070b5",
       "ciRuns": [
@@ -1292,16 +1292,16 @@
       "runtimePreserved": true,
       "reliability017": {
         "version": "0.1.7",
-        "status": "package_ready_upgrade_waiting_for_016_observation",
+        "status": "installed_verified_acceptance_gaps_remain",
         "testsPassed": 93,
         "watcherHealth": "fault_latched_until_rebuilt",
         "collectorFailure": "gap_published_snapshot_retained_dispose_safe",
         "recovery": "owned_app_forced_exit_offline_diffs_restart_passed",
         "recoveryEvidence": "artifacts/app-recovery/result-20260920T082141154-61af1c27e2e74626a289101bbc738363/result.json",
-        "ui": "isolated_home_project_pause_resume_passed",
+        "ui": "passed_installed_home_project_summary_timeline",
         "memory": "actual_app_100000_files_20GiB_failed_200MiB",
         "npmUi": "blocked_by_real_consumers_independent_windows_required",
-        "installation": "pending_preserve_016_continuous_observation",
+        "installation": "passed_408_payload_7_docs_and_5_runtime_hashes",
         "realUserFilesDeleted": 0,
         "memoryPeakMiB": 200.7265625,
         "memoryPassed": false,
@@ -1310,8 +1310,8 @@
         "durationSeconds": 603.802357,
         "samples": 120,
         "evidence": "docs/testing/reliability-017.md",
-        "stability016": "17h45m_2130_samples_no_gaps_not_24h",
-        "dataGrowth016Bytes": 447952,
+        "stability016": "completed_24h_2880_samples_no_gaps",
+        "dataGrowth016Bytes": 493008,
         "receipt": "artifacts/reliability-017-delivery.json",
         "packageCommit": "4f6783ff66efd2dfcc227ef0aaeabd77b2ff411a",
         "ciRuns": [
@@ -1320,9 +1320,15 @@
         ],
         "ciConclusion": "both_success",
         "finalPayloadRecovery": "passed",
-        "finalPayloadUi": "extra_smoke_launch_rejected_by_automatic_approval_policy_no_detailed_reason_returned",
-        "followUpAutomation": "cclean_2245_local_finish_observation_then_upgrade"
+        "finalPayloadUi": "passed_installed_ui_prior_extra_smoke_denial_retained_in_history",
+        "followUpAutomation": "cclean_DELETED_completion",
+        "installedAt": "2026-09-22T22:51:09.8464709+08:00",
+        "uiVerifiedAt": "2026-09-23T17:17:45.187271+08:00",
+        "stability017": "multiday_pending",
+        "runtimePreserved": true
       }
-    }
+    },
+    "currentInstalledVersion": "0.1.7",
+    "currentDeliveryReceipt": "artifacts/reliability-017-delivery.json"
   }
 }
