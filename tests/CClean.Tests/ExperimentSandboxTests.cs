@@ -2,6 +2,7 @@ using CClean.Core.Experiments;
 
 namespace CClean.Tests;
 
+[Trait("Category", "MvpP0")]
 [Trait("Category", "Environment")]
 [Trait("Category", "M0")]
 [Trait("Category", "Safety")]

@@ -1,0 +1,20 @@
+<UserControl x:Class="CClean.App.Views.CleanupPreviewView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel>
+   <TextBlock x:Name="PreviewIntro" Text="仅预览已验证的独占 npm 缓存；永久删除后可能需要联网重建，离线安装可能失败。外部规则默认关闭。" Margin="0,0,0,8"/>
+   <Expander x:Name="NpmSetup" Header="配置 npm 11.19.0 独占缓存规则" Margin="0,0,0,8"><StackPanel>
+    <TextBlock Text="先在项目与设置登记专用缓存根，并持续观察。此处不接受默认/全局缓存。"/>
+    <ComboBox x:Name="RootChoice" DisplayMemberPath="Root" MinHeight="38" AutomationProperties.Name="独占缓存根"/>
+    <CheckBox x:Name="Exclusive" Content="我已将此根配置为专用 npm 缓存，未与其他项目或用户共享" Margin="0,8" Foreground="{DynamicResource Ink}"/>
+    <CheckBox x:Name="Enabled" Content="启用 npm 11.19.0 规则（请确认实际工具版本）" Margin="0,8" Foreground="{DynamicResource Ink}"/>
+    <Button Content="保存此根规则" Click="SaveRule" HorizontalAlignment="Left"/>
+   </StackPanel></Expander>
+   <WrapPanel><Button x:Name="PreviewRulesButton" Content="预览已启用规则" Click="PreviewRules"/><Button x:Name="DumpPreviewButton" Content="预览旧崩溃转储" Click="PreviewDumps"/><Button Content="取消预览" Click="CancelPreview"/></WrapPanel>
+  </StackPanel>
+  <TextBlock x:Name="Summary" Grid.Row="1" Text="从文件列表选择对象，或预览已启用规则；当前不会执行删除。" Margin="0,0,0,12"/>
+  <DataGrid Grid.Row="2" x:Name="Items" SelectionMode="Single"><DataGrid.Columns>
+   <DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="*"/><DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="110"/><DataGridTextColumn Header="分配估算" Binding="{Binding Estimate}" Width="100"/><DataGridTextColumn Header="依据与排除原因" Binding="{Binding Reason}" Width="300"/>
+  </DataGrid.Columns></DataGrid>
+  <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBlock x:Name="Details" Text="清单绑定当前文件身份、流、规则与活动状态，有效期 5 分钟。新增文件不会自动加入。"/><WrapPanel><Button x:Name="ExecuteButton" Content="永久删除候选文件…" IsEnabled="False" Click="Execute"/><Button Content="停止后续清理" Click="StopExecution"/></WrapPanel></StackPanel>
+ </Grid>
+</UserControl>

@@ -3,6 +3,7 @@ using CClean.Core.Files;
 
 namespace CClean.Tests;
 
+[Trait("Category", "MvpP0")]
 [Trait("Category", "CacheCompatibility")]
 [Trait("Category", "M0")]
 [Trait("Category", "Safety")]

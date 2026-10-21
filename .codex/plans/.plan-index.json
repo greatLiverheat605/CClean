@@ -4,8 +4,8 @@
   "activePlan": "current/2026-09-17_cclean-development.md",
   "taskBoard": "current/2026-09-17_cclean-development.tasks.json",
   "status": "in_progress",
-  "nextTaskId": "DEV-008",
-  "requiredTaskCount": 20,
+  "nextTaskId": "DEV-023",
+  "requiredTaskCount": 26,
   "optionalTaskCount": 2,
   "mcpSyncStatus": "pending_unavailable",
   "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
@@ -16,5 +16,11 @@
       "file": "current/2026-09-17_cclean-development.md",
       "status": "in_progress"
     }
-  ]
+  ],
+  "validationSummary": "截至仓库交付记录：0.1.7 已安装，93 项回归通过；npm 正向 UI、新版多日观察和内存门槛仍有缺项。2026-10-06 仅追加 DEV-023～028 一键清理规划，未实施、未重新验证。",
+  "personalUseEvidence": "docs/testing/personal-acceptance.md",
+  "storageExperienceEvidence": "docs/testing/storage-home-acceptance.md",
+  "implementedFeatureAudit": "docs/audit/implemented-features.md",
+  "updatedAt": "2026-10-06",
+  "activeSubplan": "current/2026-09-17_cclean-development/sub-028-one-click-cleanup.md"
 }

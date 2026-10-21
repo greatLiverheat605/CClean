@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -15,6 +16,22 @@ public sealed record FileSnapshot(string Path, string? Identity, long? LogicalBy
 
 public static class WindowsFileMetadata
 {
+    internal static FileSnapshot Read(string path, DirectoryLease parent)
+    {
+        try
+        {
+            var full = ExperimentSandbox.Normalize(path);
+            if (!parent.IsHeld || !System.IO.Path.GetDirectoryName(full)!.TrimEnd(System.IO.Path.DirectorySeparatorChar)
+                    .Equals(parent.DirectoryPath, StringComparison.OrdinalIgnoreCase)) throw new IOException("Stable parent does not match file.");
+            using var handle = Open(full);
+            return Read(handle, full);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or Win32Exception or ExperimentRefusedException)
+        {
+            return new(path, null, null, null, 0, 0, 0, 0, false, false, error.Message);
+        }
+    }
+
     public static FileSnapshot Read(string path)
     {
         try
@@ -43,7 +60,7 @@ public static class WindowsFileMetadata
 
     internal static FileSnapshot Read(SafeFileHandle handle, string observedPath)
     {
-        var finalPath = new StringBuilder(32768);
+        var finalPath = new StringBuilder(Math.Max(260, observedPath.Length + 5));
         var pathLength = GetFinalPathNameByHandleW(handle, finalPath, (uint)finalPath.Capacity, 0);
         if (pathLength == 0 || pathLength >= finalPath.Capacity) throw new Win32Exception(Marshal.GetLastWin32Error());
         var resolved = finalPath.ToString();
@@ -61,9 +78,13 @@ public static class WindowsFileMetadata
         var named = false;
         if (!attributes.HasFlag(FileAttributes.ReparsePoint) && !attributes.HasFlag(FileAttributes.Directory))
         {
+            var streams = ArrayPool<byte>.Shared.Rent(64 * 1024);
             try
             {
-                var streams = Info(handle, 7, 64 * 1024);
+                // Reuse the bounded metadata buffer across large scans; no file content is read.
+                Array.Clear(streams);
+                if (!GetFileInformationByHandleEx(handle, 7, streams, (uint)streams.Length))
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
                 var offset = 0;
                 do
                 {
@@ -80,10 +101,11 @@ public static class WindowsFileMetadata
                 complete = true;
             }
             catch (Win32Exception) { }
+            finally { ArrayPool<byte>.Shared.Return(streams, clearArray: true); }
         }
         var exclusion = special ? "Special object" : links != 1 ? "Multiple hard links" :
             !complete ? "Stream enumeration incomplete" : named ? "Named stream" : null;
-        return new(observedPath, Convert.ToHexString(id), BitConverter.ToInt64(standard, 8),
+        return new(observedPath, Convert.ToHexString(id) + ":" + BitConverter.ToInt64(basic, 0), BitConverter.ToInt64(standard, 8),
             BitConverter.ToInt64(standard, 0), links, attributes, BitConverter.ToInt64(basic, 16),
             BitConverter.ToInt64(basic, 24), complete, named, exclusion);
     }

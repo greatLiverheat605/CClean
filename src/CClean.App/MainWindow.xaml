@@ -5,44 +5,48 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CClean.App"
         mc:Ignorable="d"
-        Title="CClean · 开发空间工作台" Height="820" Width="1240" MinHeight="720" MinWidth="1024"
+        Title="CClean · 开发空间工作台" Height="820" Width="1240" MinHeight="500" MinWidth="760"
         Loaded="OnLoaded" Closed="OnClosed" Style="{StaticResource {x:Type Window}}">
     <Grid>
-        <Grid.ColumnDefinitions><ColumnDefinition Width="208"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
             <DockPanel Margin="18,28">
                 <StackPanel DockPanel.Dock="Top" Margin="10,0,0,32">
                     <TextBlock Text="CClean" FontSize="27" FontWeight="SemiBold"/>
-                    <TextBlock Text="开发空间工作台" Foreground="{DynamicResource Muted}" Margin="0,6,0,0"/>
+                    <TextBlock Text="空间整理 · 开发守护" Foreground="{DynamicResource Muted}" Margin="0,6,0,0"/>
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Bottom">
+                    <Button Content="已实现功能审计" Click="OpenAudit"/>
                     <TextBlock Text="本地处理 · 受控范围" Foreground="{DynamicResource Muted}" Margin="10,0,0,12"/>
                     <Button Content="切换浅色 / 深色" Click="ToggleTheme" AutomationProperties.Name="切换主题"/>
                 </StackPanel>
                 <ListBox x:Name="Navigation" SelectionChanged="Navigate" BorderThickness="0" Background="Transparent"
                          Foreground="{DynamicResource Ink}" AutomationProperties.Name="主导航">
                     <ListBox.Resources><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="12,13"/><Setter Property="Margin" Value="0,2"/></Style></ListBox.Resources>
-                    <ListBoxItem Content="总览"/>
-                    <ListBoxItem Content="开发时间线"/>
-                    <ListBoxItem Content="文件与空间"/>
+                    <ListBoxItem Content="项目工作台"/>
+                    <ListBoxItem Content="空间与快清"/>
                     <ListBoxItem Content="清理中心"/>
                     <ListBoxItem Content="清理记录"/>
                     <ListBoxItem Content="项目与设置"/>
                 </ListBox>
             </DockPanel>
         </Border>
-        <Grid Grid.Column="1" Margin="32,28">
+        <Grid Grid.Column="1" Margin="24,24">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,20">
                 <Button DockPanel.Dock="Right" Content="刷新容量" Click="Refresh"/>
-                <StackPanel><TextBlock x:Name="PageTitle" Text="总览" FontSize="28" FontWeight="SemiBold"/>
+                <StackPanel><TextBlock x:Name="PageTitle" Text="项目工作台" FontSize="28" FontWeight="SemiBold"/>
                     <TextBlock x:Name="Capacity" Text="正在读取系统容量…" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/></StackPanel>
             </DockPanel>
             <Border Grid.Row="1" Background="{DynamicResource Panel}" Padding="16,12" Margin="0,0,0,20" CornerRadius="6">
                 <TextBlock x:Name="Status" Text="尚未登记目录。登记后才会在确认范围内监测。" AutomationProperties.LiveSetting="Polite"/>
             </Border>
-            <ContentControl Grid.Row="2" x:Name="PageContent"/>
-            <TextBlock Grid.Row="3" Text="文件占用、目录净增长与系统可用量分别计量。归因依据不代表删除授权。"
+            <ScrollViewer Grid.Row="2" x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Focusable="False">
+                <Grid MinHeight="480" MinWidth="580" Height="{Binding ViewportHeight, ElementName=PageScroll}" Width="{Binding ViewportWidth, ElementName=PageScroll}">
+                    <ContentControl x:Name="PageContent"/>
+                </Grid>
+            </ScrollViewer>
+            <TextBlock Grid.Row="3" Text="本地只读盘点 · 持续监测需登记 · 永久删除需单独确认"
                        Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,18,0,0"/>
         </Grid>
     </Grid>

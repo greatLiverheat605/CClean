@@ -1,4 +1,4 @@
-name: Windows foundation
+name: Windows MVP checks
 on: [push, pull_request]
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
       - run: dotnet build CClean.slnx -c Release
       - shell: pwsh
         run: |
-          dotnet test tests/CClean.Tests -c Release --no-build --filter Category=Foundation --logger "trx;LogFileName=foundation.trx"
+          dotnet test tests/CClean.Tests -c Release --no-build --filter Category=MvpP0 --logger "trx;LogFileName=foundation.trx"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           [xml]$result = Get-Content tests/CClean.Tests/TestResults/foundation.trx
-          if ([int]$result.TestRun.ResultSummary.Counters.executed -le 0) { throw 'No Foundation tests selected' }
+          if ([int]$result.TestRun.ResultSummary.Counters.executed -le 0) { throw 'No MVP tests selected' }

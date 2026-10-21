@@ -4,10 +4,10 @@
   "title": "CClean 从 M0 验证到 MVP 交付",
   "createdAt": "2026-09-17T16:08:28+08:00",
   "status": "in_progress",
-  "currentTaskId": "DEV-008",
+  "currentTaskId": "DEV-023",
   "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
   "sourcePlan": "2026-09-17_cclean-development.md",
-  "requiredTaskCount": 20,
+  "requiredTaskCount": 26,
   "optionalTaskCount": 2,
   "sync": {
     "provider": "task-mcp",
@@ -34,7 +34,7 @@
     "G2": "passed",
     "G3": "passed",
     "G4Budget": "passed",
-    "G4Full": "not_run",
+    "G4Full": "failed",
     "G5": "not_run"
   },
   "taskStatusContract": {
@@ -43,7 +43,8 @@
     "passed": "任务验收已通过",
     "failed": "已执行但验收未通过",
     "blocked": "前置门槛/环境阻塞",
-    "deferred": "不属于默认 MVP 执行队列"
+    "deferred": "不属于默认 MVP 执行队列",
+    "pending_validation": "实现及部分验证完成，仍有必需验收缺项，不等同 passed"
   },
   "dependencyContract": {
     "all_passed": "所有依赖任务通过，且 requiredGates 全部通过，才可执行",
@@ -427,7 +428,7 @@
       "name": "[CClean][DEV-008] 建立 WPF 外壳、项目配置和 Windows CI",
       "stage": "M1",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-007"
@@ -474,14 +475,15 @@
         "NFR-01"
       ],
       "estimate": "纳入 M1 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/app-foundation.md"
     },
     {
       "id": "DEV-009",
       "name": "[CClean][DEV-009] 集成目录发现、持续监测和覆盖状态",
       "stage": "M1",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-008"
@@ -525,14 +527,15 @@
         "AT-21"
       ],
       "estimate": "纳入 M1 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/discovery.md"
     },
     {
       "id": "DEV-010",
       "name": "[CClean][DEV-010] 落地索引、容量总览和自身资源守卫",
       "stage": "M1",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-008",
@@ -577,14 +580,15 @@
         "AT-13"
       ],
       "estimate": "纳入 M1 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/index-storage.md"
     },
     {
       "id": "DEV-011",
       "name": "[CClean][DEV-011] 实现会话、工具基础适配与活动保护",
       "stage": "M2",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-010"
@@ -628,14 +632,15 @@
         "AT-15"
       ],
       "estimate": "纳入 M2 的 5–7 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/sessions.md"
     },
     {
       "id": "DEV-012",
       "name": "[CClean][DEV-012] 实现证据分类、共享去重和时间聚合查询",
       "stage": "M2",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-011"
@@ -672,14 +677,15 @@
         "AT-04"
       ],
       "estimate": "纳入 M2 的 5–7 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/attribution.md"
     },
     {
       "id": "DEV-013",
       "name": "[CClean][DEV-013] 完成分支时间线、详情和空间筛选",
       "stage": "M2",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-012"
@@ -723,14 +729,15 @@
         "AT-17"
       ],
       "estimate": "纳入 M2 的 5–7 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/timeline.md"
     },
     {
       "id": "DEV-014",
       "name": "[CClean][DEV-014] 实现版本化规则和所有入口的保护分类",
       "stage": "M3",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-010",
@@ -769,14 +776,15 @@
         "AT-20"
       ],
       "estimate": "纳入 M3 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/protection-policy.md"
     },
     {
       "id": "DEV-015",
       "name": "[CClean][DEV-015] 生成一次性清理清单与 dry-run 界面",
       "stage": "M3",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-014",
@@ -815,14 +823,15 @@
         "AT-10"
       ],
       "estimate": "纳入 M3 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/cleanup-preview.md"
     },
     {
       "id": "DEV-016",
       "name": "[CClean][DEV-016] 集成受控执行器与可持久化审计",
       "stage": "M4",
       "priority": "P0",
-      "status": "pending",
+      "status": "passed",
       "optional": false,
       "dependencies": [
         "DEV-004",
@@ -869,14 +878,15 @@
         "AT-10"
       ],
       "estimate": "纳入 M4 的 5–8 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/research/cleanup-execution.md"
     },
     {
       "id": "DEV-017",
       "name": "[CClean][DEV-017] 完成手动与一键清理的用户闭环",
       "stage": "M4",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-013",
@@ -916,14 +926,23 @@
         "AT-15"
       ],
       "estimate": "纳入 M4 的 5–8 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/cleanup-acceptance.md",
+      "validationNote": "功能接线和真实 npm 产品执行器验证完成；完整 UI 正向执行与 DEV-013 200% DPI 待验。",
+      "followUpTaskIds": [
+        "DEV-023",
+        "DEV-024",
+        "DEV-025",
+        "DEV-026",
+        "DEV-027"
+      ]
     },
     {
       "id": "DEV-018",
       "name": "[CClean][DEV-018] 完成故障恢复、取消和清理对抗验收",
       "stage": "M4",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-016",
@@ -962,14 +981,20 @@
         "AT-13"
       ],
       "estimate": "纳入 M4 的 5–8 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/cleanup-acceptance.md",
+      "validationNote": "2026-09-18 已补真实删除后审计 SQLite FULL 13：下一对象保留、重启 Interrupted、无伪造提交。完整 UI 仍待验。",
+      "followUpTaskIds": [
+        "DEV-023",
+        "DEV-027"
+      ]
     },
     {
       "id": "DEV-019",
       "name": "[CClean][DEV-019] 完成性能、低空间、权限和可访问性验收",
       "stage": "M5",
       "priority": "P0",
-      "status": "pending",
+      "status": "failed",
       "optional": false,
       "dependencies": [
         "DEV-010",
@@ -1009,14 +1034,19 @@
         "NFR-07"
       ],
       "estimate": "纳入 M5 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/release-acceptance.md",
+      "validationNote": "三轮完整大样本空闲采样内存均超过 200 MiB；最终保留 v3 CPU 0.1322%、峰值 267.19 MiB。实际 200% DPI、部分完整 UI/权限和真实审计提交竞态仍待验。",
+      "followUpTaskIds": [
+        "DEV-028"
+      ]
     },
     {
       "id": "DEV-020",
       "name": "[CClean][DEV-020] 准备 Windows 测试安装包、用户文档和 GitHub 交付",
       "stage": "M5",
       "priority": "P0",
-      "status": "pending",
+      "status": "pending_validation",
       "optional": false,
       "dependencies": [
         "DEV-019"
@@ -1063,7 +1093,12 @@
         "发行条件"
       ],
       "estimate": "纳入 M5 的 4–6 人日",
-      "remoteTaskId": null
+      "remoteTaskId": null,
+      "evidence": "docs/testing/release-acceptance.md",
+      "validationNote": "内部自包含安装包编译成功、私有草稿 PR #1 已同步，干净 VM 安装/升级/卸载及前置性能门槛未通过。",
+      "followUpTaskIds": [
+        "DEV-028"
+      ]
     },
     {
       "id": "DEV-021",
@@ -1167,6 +1202,681 @@
       ],
       "estimate": "与 DEV-021 合计 5–8 人日",
       "remoteTaskId": null
+    },
+    {
+      "id": "DEV-023",
+      "name": "[CClean][DEV-023] 复现并修复清理触发自身活动保护",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-014",
+        "DEV-016"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-017",
+        "DEV-018"
+      ],
+      "description": "复现并修复清理触发自身活动保护",
+      "implementationGuide": "先使用真实 DirectoryMonitor 和每项重新获取的生产活动上下文复现多文件清理。仅核实属于当前清单和同句柄删除的通知可作为自身操作，不以路径匹配或执行中标志豁免外部活动；保留未知、缺口、溢出与消费者保护。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Monitoring/DirectoryMonitor.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupExecutor.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/MonitoringTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupWorkflowTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "真实 watcher 下至少 3 个对象整批完成；首项通知已到达后继续执行，外部写入/同路径替换/监测故障仍停止后续；固定上下文测试不能替代。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "FR-14",
+        "OC-03",
+        "OC-07"
+      ],
+      "estimate": "1.5–2.5 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-024",
+      "name": "[CClean][DEV-024] 统一规则启用、真实版本预检和规则上下文",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-023"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-014",
+        "DEV-017"
+      ],
+      "description": "统一规则启用、真实版本预检和规则上下文",
+      "implementationGuide": "在现有 RuleCatalog 中持久化 npm 与 WSL 显式启用项并兼容旧配置；核实 npm 实际版本，禁止硬编码常量冒充检测。统一上下文获取但按规则保持活动和保护边界，WSL 项目保护不能排除所有已登记 npm 根。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/RuleCatalog.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupPlanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupConsumers.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CrashDumpRule.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/ProtectionPolicy.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CacheRuleCompatibilityTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CrashDumpRuleTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/ProtectionPolicyTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "启用状态重启保持，未知工具版本拒绝；两规则保护独立，单条无内容或阻塞不取消另一条合格规则；配置/保护改变使旧清单失效。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-09",
+        "FR-10",
+        "FR-14",
+        "OC-01",
+        "OC-02",
+        "OC-04"
+      ],
+      "estimate": "1–1.5 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-025",
+      "name": "[CClean][DEV-025] 有界扫描并生成可执行的一键批次清单",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-024"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-015",
+        "DEV-017"
+      ],
+      "description": "有界扫描并生成可执行的一键批次清单",
+      "implementationGuide": "只枚举已启用规则允许的内容范围，流式收集至多 1000 个合格对象并公平轮换规则；检查目录项/目录/时间和审计字节预算。将本批选择结束与扫描错误区分，保留未扫描覆盖提示，不绕过既有 Truncated 拒绝；WSL 最新转储判定必须完整。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupPlanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CrashDumpRule.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupCandidateScanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupPlanTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "0/1/1000/1001 及混合规则验证通过；1001 可预览执行首批，未批准对象全部保留；10 万文件不先构造全根快照；取消和预算有界，未知根不执行。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-09",
+        "FR-10",
+        "OC-02",
+        "OC-04",
+        "OC-05",
+        "OC-08"
+      ],
+      "estimate": "1–2 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-026",
+      "name": "[CClean][DEV-026] 接通首页一键清理与统一确认、进度和结果",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-025"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-017"
+      ],
+      "description": "接通首页一键清理与统一确认、进度和结果",
+      "implementationGuide": "首页一键入口自动生成统一预览，首次未配置则引导规则启用；一次确认涵盖所有规则后果及本批边界。复用唯一执行器，处理无候选/过期/重入/换页/停止/失败；对象估算与逐卷实测容量分开。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/MainWindow.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "已配置用户从首页入口加一次确认完成本批，无逐项目逐规则重复确认；无候选不执行，剩余范围明确；键盘、主题和 125/150/200% DPI 可用。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "OC-02",
+        "OC-04",
+        "OC-06",
+        "OC-09",
+        "OC-11",
+        "OC-12"
+      ],
+      "estimate": "0.5–1 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-027",
+      "name": "[CClean][DEV-027] 完成真实 npm 及混合规则一键端到端验收",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-026"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-017",
+        "DEV-018"
+      ],
+      "description": "完成真实 npm 及混合规则一键端到端验收",
+      "implementationGuide": "独立 Windows 环境使用真实 npm 11.19.0 生成专用缓存、自然静置至少 30 分钟和可靠首扫，经生产 UI 与 watcher 执行至少 3 个候选，再验证重建与安装。补混合 WSL fixture 和 OC-01 至 OC-12；人工老化与固定上下文证据明确分列。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "tests/CClean.Tests/CleanupWorkflowTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupPlanTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupRecoveryTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/DeletionSafetyTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/MonitoringTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CrashDumpRuleTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.Poc/CacheProbe.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.UiProbe/Program.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/cleanup-acceptance.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/one-click-cleanup.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "OC-01～12 实际执行，真实 npm UI 删除及重建通过；保护对象和清单外删除数为 0；缺环境/必测跳过不记 passed。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "FR-14",
+        "OC-01–OC-12"
+      ],
+      "estimate": "1.5–2 人日，另计静置及环境等待",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-028",
+      "name": "[CClean][DEV-028] 复核性能并完成一键清理内部包与说明",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-027"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-019",
+        "DEV-020"
+      ],
+      "description": "复核性能并完成一键清理内部包与说明",
+      "implementationGuide": "复核首批扫描/取消/执行和大样本内存，保持 5 分钟批准及原 CPU/内存目标；失败继续记录 DEV-019/G4Full，不把内部包当正式发行。更新支持范围与批次说明，从干净提交制包，验证安装升级配置迁移、运行数据保留及安装版 UI。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "tools/Measure-AppIdle.ps1",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/Build-InternalPackage.ps1",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "packaging/CClean.iss",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/CClean.App.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "README.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "CHANGELOG.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/user-guide.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/audit/implemented-features.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/release-acceptance.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/05-delivery-plan.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "同版本构建、功能验收、来源哈希及安装版 UI 可追溯；随包说明匹配，旧数据和规则启用状态保持；原性能/发行/DPI/长期观察缺项独立判定。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-14",
+        "NFR-01",
+        "NFR-02",
+        "OC-12",
+        "内部交付"
+      ],
+      "estimate": "0.5–1 人日，另计长期观察",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
     }
-  ]
+  ],
+  "personalUse": {
+    "authorizedAt": "2026-09-18",
+    "status": "observation_ready_cleanup_pending",
+    "evidence": "docs/testing/personal-acceptance.md",
+    "scope": "本机个人日常观察与安全清理；发行跨环境验收后移，原性能失败保留",
+    "auditCommitFailure": "passed_real_sqlite_full",
+    "installation": "passed_local_upgrade_uninstall_reinstall",
+    "observation": "passed_real_project_ui_pause_resume",
+    "stability": "passed_903s_local_816_files",
+    "cleanupUi": "pending_positive_flow",
+    "nextAction": "先实施 DEV-023～028 一键清理闭环，真实 npm UI 和多规则批次验收后再评估完成；DEV-019 内存失败与新版多日观察缺项保留。",
+    "delivery": {
+      "status": "passed_installed_and_started",
+      "packageCommit": "dc9288bcd99b32db25df9da3c56cab964e642d44",
+      "receipt": "artifacts/personal-final-delivery.json",
+      "ciRuns": [
+        35308267541,
+        35308264368
+      ]
+    },
+    "storageExperience": {
+      "version": "0.1.2",
+      "status": "passed_installed_awaiting_user_acceptance",
+      "subplan": "2026-09-17_cclean-development/sub-024-storage-home.md",
+      "evidence": "docs/testing/storage-home-acceptance.md",
+      "testsPassed": 49,
+      "realDumpDeletion": "not_executed",
+      "versionFolders": "name_hints_only_source_preserved",
+      "packageCommit": "f46da283cdef8462cb19459081d68f2723c5bfad",
+      "receipt": "artifacts/storage-home-delivery.json",
+      "ciRuns": [
+        35312313742,
+        35312310833
+      ],
+      "runtimeHashesPreserved": true,
+      "systemExclusion": {
+        "version": "0.1.3",
+        "status": "installed_version_and_data_verified",
+        "testsPassed": 50,
+        "packageCommit": "24d2cd22039b51edb9aaaa07ceab6f6a5f14cbf5",
+        "installedVersion": "0.1.3",
+        "uiAcceptance": "pending",
+        "runtimeHashesPreserved": true,
+        "receipt": "artifacts/system-exclusion-delivery.json"
+      }
+    },
+    "sessionDiscovery": {
+      "version": "0.1.4",
+      "status": "passed_installed_awaiting_user_acceptance",
+      "subplan": "2026-09-17_cclean-development/sub-025-session-discovery-audit.md",
+      "audit": "docs/audit/implemented-features.md",
+      "testsPassed": 53,
+      "supportedTools": [
+        "Codex",
+        "Claude Code"
+      ],
+      "zcode": "not_supported",
+      "processState": "unknown_protected",
+      "realDeletion": "not_executed",
+      "packageCommit": "2d3e733afd50ddd3a54b0c89498c3ff0555c3468",
+      "receipt": "artifacts/session-discovery-delivery.json",
+      "ciRuns": [
+        35442743165,
+        35442741454
+      ],
+      "runtimePreserved": true
+    },
+    "projectWorkbench": {
+      "version": "0.1.5",
+      "status": "passed_installed_awaiting_user_acceptance",
+      "subplan": "2026-09-17_cclean-development/sub-026-project-workbench.md",
+      "testsPassed": 55,
+      "packageCommit": "4c7e920e1962634202fe2f0c782469d469d27e47",
+      "receipt": "artifacts/project-workbench-delivery.json",
+      "runtimePreserved": true,
+      "ciRuns": [
+        35444548177,
+        35444545353
+      ],
+      "realDeletion": "not_executed"
+    },
+    "productCompletion": {
+      "version": "0.1.6",
+      "status": "installed_core_verified_acceptance_gaps_remain",
+      "subplan": "2026-09-17_cclean-development/sub-027-personal-product-completion.md",
+      "testsPassed": 68,
+      "discovery": "manual_bounded_rescan_verified",
+      "comparison": "bounded_read_only_no_deletion",
+      "preferences": "theme_and_discovery_root_restart_verified",
+      "cleanupUi": "synthetic_wsl_passed_npm_positive_pending",
+      "realUserFilesDeleted": 0,
+      "memoryPeakMiB": 206.4,
+      "memoryPassed": false,
+      "cpuPercent": 0.533,
+      "cpuPassed": true,
+      "stability": "016_completed_24h_017_multiday_pending",
+      "receipt": "artifacts/product-completion-delivery.json",
+      "packageCommit": "b2cbcf1d0f4c0c34e70e50eacbb4567d2ea070b5",
+      "ciRuns": [
+        35449241867,
+        35449239926
+      ],
+      "runtimePreserved": true,
+      "reliability017": {
+        "version": "0.1.7",
+        "status": "installed_verified_acceptance_gaps_remain",
+        "testsPassed": 93,
+        "watcherHealth": "fault_latched_until_rebuilt",
+        "collectorFailure": "gap_published_snapshot_retained_dispose_safe",
+        "recovery": "owned_app_forced_exit_offline_diffs_restart_passed",
+        "recoveryEvidence": "artifacts/app-recovery/result-20260920T082141154-61af1c27e2e74626a289101bbc738363/result.json",
+        "ui": "passed_installed_home_project_summary_timeline",
+        "memory": "actual_app_100000_files_20GiB_failed_200MiB",
+        "npmUi": "blocked_by_real_consumers_independent_windows_required",
+        "installation": "passed_408_payload_7_docs_and_5_runtime_hashes",
+        "realUserFilesDeleted": 0,
+        "memoryPeakMiB": 200.7265625,
+        "memoryPassed": false,
+        "cpuPercent": 0.6277048290372742,
+        "cpuPassed": true,
+        "durationSeconds": 603.802357,
+        "samples": 120,
+        "evidence": "docs/testing/reliability-017.md",
+        "stability016": "completed_24h_2880_samples_no_gaps",
+        "dataGrowth016Bytes": 493008,
+        "receipt": "artifacts/reliability-017-delivery.json",
+        "packageCommit": "4f6783ff66efd2dfcc227ef0aaeabd77b2ff411a",
+        "ciRuns": [
+          35499803389,
+          35499800738
+        ],
+        "ciConclusion": "both_success",
+        "finalPayloadRecovery": "passed",
+        "finalPayloadUi": "passed_installed_ui_prior_extra_smoke_denial_retained_in_history",
+        "followUpAutomation": "cclean_DELETED_completion",
+        "installedAt": "2026-09-22T22:51:09.8464709+08:00",
+        "uiVerifiedAt": "2026-09-23T17:17:45.187271+08:00",
+        "stability017": "multiday_pending",
+        "runtimePreserved": true
+      }
+    },
+    "currentInstalledVersion": "0.1.7",
+    "currentDeliveryReceipt": "artifacts/reliability-017-delivery.json"
+  },
+  "oneClickCleanup": {
+    "status": "planned",
+    "plannedAt": "2026-10-06",
+    "sourceCommit": "7da7c63830fb6c77f646eacccf5d7ee243d72a91",
+    "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+    "tasks": [
+      "DEV-023",
+      "DEV-024",
+      "DEV-025",
+      "DEV-026",
+      "DEV-027",
+      "DEV-028"
+    ],
+    "nextTaskId": "DEV-023",
+    "definition": "已启用规则自动汇集，统一预览后一次确认，执行至多 1000 个合格对象的本批；剩余内容另行预览确认。",
+    "acceptance": "not_run",
+    "realUserFilesDeleted": 0,
+    "mcpSync": "pending_unavailable"
+  },
+  "updatedAt": "2026-10-06"
 }

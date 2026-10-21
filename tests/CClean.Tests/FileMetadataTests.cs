@@ -5,6 +5,7 @@ using CClean.Core.Storage;
 
 namespace CClean.Tests;
 
+[Trait("Category", "MvpP0")]
 [Trait("Category", "FileMetadata")]
 [Trait("Category", "M0")]
 public class FileMetadataTests
@@ -56,6 +57,27 @@ public class FileMetadataTests
         Assert.True(info.StreamsComplete);
         Assert.True(info.HasNamedStreams);
         Assert.False(info.IsOrdinaryFile);
+    }
+
+    [Fact]
+    public void RepeatedReadsPreserveStreamSafetyWithoutLargePerFileAllocations()
+    {
+        using var box = Sandbox();
+        var ordinary = box.CreateFixture("ordinary.bin", 10);
+        var named = box.CreateFixture("named.bin", 10);
+        File.WriteAllText(named + ":extra", "synthetic", System.Text.Encoding.UTF8);
+        WindowsFileMetadata.Read(ordinary); WindowsFileMetadata.Read(named);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        const int reads = 64;
+        for (var i = 0; i < reads; i++)
+        {
+            var metadata = WindowsFileMetadata.Read(i % 2 == 0 ? ordinary : named);
+            Assert.True(metadata.StreamsComplete);
+            Assert.Equal(i % 2 != 0, metadata.HasNamedStreams);
+            Assert.Equal(i % 2 == 0, metadata.IsOrdinaryFile);
+        }
+        // The old 64 KiB-per-file stream buffer exceeds this generous allocation bound.
+        Assert.True(GC.GetAllocatedBytesForCurrentThread() - before < reads * 16 * 1024);
     }
 
     [Fact]

@@ -1,0 +1,27 @@
+name: Internal package draft
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - shell: pwsh
+        run: |
+          dotnet test tests/CClean.Tests -c Release --filter Category=MvpP0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe' -OutFile "$env:RUNNER_TEMP/inno.exe"
+          if ((Get-FileHash "$env:RUNNER_TEMP/inno.exe" -Algorithm SHA256).Hash -ne '0362A383ED217D4C4239B5933866DD96D3EB2102737DA92F80F6057A4B40DF2F') { throw 'Inno installer hash mismatch' }
+          if ((Get-AuthenticodeSignature "$env:RUNNER_TEMP/inno.exe").Status -ne 'Valid') { throw 'Inno signature invalid' }
+          $compilerRoot = "$env:RUNNER_TEMP/inno-7.1.0"
+          $install = Start-Process "$env:RUNNER_TEMP/inno.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',"/DIR=`"$compilerRoot`"" -WindowStyle Hidden -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw 'Inno installation failed' }
+          ./tools/Build-InternalPackage.ps1 -Iscc "$compilerRoot/ISCC.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CClean-internal-unaccepted
+          path: artifacts/packages/
