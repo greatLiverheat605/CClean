@@ -4,10 +4,10 @@
   "title": "CClean 从 M0 验证到 MVP 交付",
   "createdAt": "2026-09-17T16:08:28+08:00",
   "status": "in_progress",
-  "currentTaskId": "DEV-019",
+  "currentTaskId": "DEV-023",
   "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
   "sourcePlan": "2026-09-17_cclean-development.md",
-  "requiredTaskCount": 20,
+  "requiredTaskCount": 26,
   "optionalTaskCount": 2,
   "sync": {
     "provider": "task-mcp",
@@ -928,7 +928,14 @@
       "estimate": "纳入 M4 的 5–8 人日",
       "remoteTaskId": null,
       "evidence": "docs/testing/cleanup-acceptance.md",
-      "validationNote": "功能接线和真实 npm 产品执行器验证完成；完整 UI 正向执行与 DEV-013 200% DPI 待验。"
+      "validationNote": "功能接线和真实 npm 产品执行器验证完成；完整 UI 正向执行与 DEV-013 200% DPI 待验。",
+      "followUpTaskIds": [
+        "DEV-023",
+        "DEV-024",
+        "DEV-025",
+        "DEV-026",
+        "DEV-027"
+      ]
     },
     {
       "id": "DEV-018",
@@ -976,7 +983,11 @@
       "estimate": "纳入 M4 的 5–8 人日",
       "remoteTaskId": null,
       "evidence": "docs/testing/cleanup-acceptance.md",
-      "validationNote": "2026-09-18 已补真实删除后审计 SQLite FULL 13：下一对象保留、重启 Interrupted、无伪造提交。完整 UI 仍待验。"
+      "validationNote": "2026-09-18 已补真实删除后审计 SQLite FULL 13：下一对象保留、重启 Interrupted、无伪造提交。完整 UI 仍待验。",
+      "followUpTaskIds": [
+        "DEV-023",
+        "DEV-027"
+      ]
     },
     {
       "id": "DEV-019",
@@ -1025,7 +1036,10 @@
       "estimate": "纳入 M5 的 4–6 人日",
       "remoteTaskId": null,
       "evidence": "docs/testing/release-acceptance.md",
-      "validationNote": "三轮完整大样本空闲采样内存均超过 200 MiB；最终保留 v3 CPU 0.1322%、峰值 267.19 MiB。实际 200% DPI、部分完整 UI/权限和真实审计提交竞态仍待验。"
+      "validationNote": "三轮完整大样本空闲采样内存均超过 200 MiB；最终保留 v3 CPU 0.1322%、峰值 267.19 MiB。实际 200% DPI、部分完整 UI/权限和真实审计提交竞态仍待验。",
+      "followUpTaskIds": [
+        "DEV-028"
+      ]
     },
     {
       "id": "DEV-020",
@@ -1081,7 +1095,10 @@
       "estimate": "纳入 M5 的 4–6 人日",
       "remoteTaskId": null,
       "evidence": "docs/testing/release-acceptance.md",
-      "validationNote": "内部自包含安装包编译成功、私有草稿 PR #1 已同步，干净 VM 安装/升级/卸载及前置性能门槛未通过。"
+      "validationNote": "内部自包含安装包编译成功、私有草稿 PR #1 已同步，干净 VM 安装/升级/卸载及前置性能门槛未通过。",
+      "followUpTaskIds": [
+        "DEV-028"
+      ]
     },
     {
       "id": "DEV-021",
@@ -1185,6 +1202,517 @@
       ],
       "estimate": "与 DEV-021 合计 5–8 人日",
       "remoteTaskId": null
+    },
+    {
+      "id": "DEV-023",
+      "name": "[CClean][DEV-023] 复现并修复清理触发自身活动保护",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-014",
+        "DEV-016"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-017",
+        "DEV-018"
+      ],
+      "description": "复现并修复清理触发自身活动保护",
+      "implementationGuide": "先使用真实 DirectoryMonitor 和每项重新获取的生产活动上下文复现多文件清理。仅核实属于当前清单和同句柄删除的通知可作为自身操作，不以路径匹配或执行中标志豁免外部活动；保留未知、缺口、溢出与消费者保护。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Monitoring/DirectoryMonitor.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupExecutor.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/MonitoringTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupWorkflowTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "真实 watcher 下至少 3 个对象整批完成；首项通知已到达后继续执行，外部写入/同路径替换/监测故障仍停止后续；固定上下文测试不能替代。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "FR-14",
+        "OC-03",
+        "OC-07"
+      ],
+      "estimate": "1.5–2.5 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-024",
+      "name": "[CClean][DEV-024] 统一规则启用、真实版本预检和规则上下文",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-023"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-014",
+        "DEV-017"
+      ],
+      "description": "统一规则启用、真实版本预检和规则上下文",
+      "implementationGuide": "在现有 RuleCatalog 中持久化 npm 与 WSL 显式启用项并兼容旧配置；核实 npm 实际版本，禁止硬编码常量冒充检测。统一上下文获取但按规则保持活动和保护边界，WSL 项目保护不能排除所有已登记 npm 根。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/RuleCatalog.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupPlanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupConsumers.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CrashDumpRule.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/ProtectionPolicy.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CacheRuleCompatibilityTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CrashDumpRuleTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/ProtectionPolicyTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "启用状态重启保持，未知工具版本拒绝；两规则保护独立，单条无内容或阻塞不取消另一条合格规则；配置/保护改变使旧清单失效。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-09",
+        "FR-10",
+        "FR-14",
+        "OC-01",
+        "OC-02",
+        "OC-04"
+      ],
+      "estimate": "1–1.5 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-025",
+      "name": "[CClean][DEV-025] 有界扫描并生成可执行的一键批次清单",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-024"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-015",
+        "DEV-017"
+      ],
+      "description": "有界扫描并生成可执行的一键批次清单",
+      "implementationGuide": "只枚举已启用规则允许的内容范围，流式收集至多 1000 个合格对象并公平轮换规则；检查目录项/目录/时间和审计字节预算。将本批选择结束与扫描错误区分，保留未扫描覆盖提示，不绕过既有 Truncated 拒绝；WSL 最新转储判定必须完整。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupPlanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CrashDumpRule.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupCandidateScanner.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupPlanTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "0/1/1000/1001 及混合规则验证通过；1001 可预览执行首批，未批准对象全部保留；10 万文件不先构造全根快照；取消和预算有界，未知根不执行。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-09",
+        "FR-10",
+        "OC-02",
+        "OC-04",
+        "OC-05",
+        "OC-08"
+      ],
+      "estimate": "1–2 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-026",
+      "name": "[CClean][DEV-026] 接通首页一键清理与统一确认、进度和结果",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-025"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-017"
+      ],
+      "description": "接通首页一键清理与统一确认、进度和结果",
+      "implementationGuide": "首页一键入口自动生成统一预览，首次未配置则引导规则启用；一次确认涵盖所有规则后果及本批边界。复用唯一执行器，处理无候选/过期/重入/换页/停止/失败；对象估算与逐卷实测容量分开。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/MainWindow.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "已配置用户从首页入口加一次确认完成本批，无逐项目逐规则重复确认；无候选不执行，剩余范围明确；键盘、主题和 125/150/200% DPI 可用。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "OC-02",
+        "OC-04",
+        "OC-06",
+        "OC-09",
+        "OC-11",
+        "OC-12"
+      ],
+      "estimate": "0.5–1 人日",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-027",
+      "name": "[CClean][DEV-027] 完成真实 npm 及混合规则一键端到端验收",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-026"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-017",
+        "DEV-018"
+      ],
+      "description": "完成真实 npm 及混合规则一键端到端验收",
+      "implementationGuide": "独立 Windows 环境使用真实 npm 11.19.0 生成专用缓存、自然静置至少 30 分钟和可靠首扫，经生产 UI 与 watcher 执行至少 3 个候选，再验证重建与安装。补混合 WSL fixture 和 OC-01 至 OC-12；人工老化与固定上下文证据明确分列。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "tests/CClean.Tests/CleanupWorkflowTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupPlanTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupRecoveryTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/DeletionSafetyTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/MonitoringTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CrashDumpRuleTests.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.Poc/CacheProbe.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.UiProbe/Program.cs",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/cleanup-acceptance.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/one-click-cleanup.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "OC-01～12 实际执行，真实 npm UI 删除及重建通过；保护对象和清单外删除数为 0；缺环境/必测跳过不记 passed。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-10",
+        "FR-11",
+        "FR-14",
+        "OC-01–OC-12"
+      ],
+      "estimate": "1.5–2 人日，另计静置及环境等待",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
+    },
+    {
+      "id": "DEV-028",
+      "name": "[CClean][DEV-028] 复核性能并完成一键清理内部包与说明",
+      "stage": "OneClick",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "dependencies": [
+        "DEV-027"
+      ],
+      "dependencyMode": "all_passed",
+      "requiredGates": [
+        "G2",
+        "G3"
+      ],
+      "followUpFor": [
+        "DEV-019",
+        "DEV-020"
+      ],
+      "description": "复核性能并完成一键清理内部包与说明",
+      "implementationGuide": "复核首批扫描/取消/执行和大样本内存，保持 5 分钟批准及原 CPU/内存目标；失败继续记录 DEV-019/G4Full，不把内部包当正式发行。更新支持范围与批次说明，从干净提交制包，验证安装升级配置迁移、运行数据保留及安装版 UI。",
+      "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "relatedFiles": [
+        {
+          "path": "tools/Measure-AppIdle.ps1",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/Build-InternalPackage.ps1",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "packaging/CClean.iss",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/CClean.App.csproj",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "README.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "CHANGELOG.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/user-guide.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/audit/implemented-features.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/release-acceptance.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/05-delivery-plan.md",
+          "changeType": "create-or-update-during-execution",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCommands": [
+        "按 sub-028 对应步骤和 OC 矩阵执行；命令与新增测试是否存在先核实"
+      ],
+      "verificationCriteria": "同版本构建、功能验收、来源哈希及安装版 UI 可追溯；随包说明匹配，旧数据和规则启用状态保持；原性能/发行/DPI/长期观察缺项独立判定。",
+      "failureHandling": "保留实际失败/缺项；保护证据不足停止清理，不以放宽规则或固定上下文替代验收。",
+      "requirementReferences": [
+        "FR-14",
+        "NFR-01",
+        "NFR-02",
+        "OC-12",
+        "内部交付"
+      ],
+      "estimate": "0.5–1 人日，另计长期观察",
+      "remoteTaskId": null,
+      "evidence": null,
+      "createdAt": "2026-10-06",
+      "statusNote": "本轮仅规划，未实施或验证。"
     }
   ],
   "personalUse": {
@@ -1197,7 +1725,7 @@
     "observation": "passed_real_project_ui_pause_resume",
     "stability": "passed_903s_local_816_files",
     "cleanupUi": "pending_positive_flow",
-    "nextAction": "正向清理 UI 与多日日常稳定性补验；保留原发行失败",
+    "nextAction": "先实施 DEV-023～028 一键清理闭环，真实 npm UI 和多规则批次验收后再评估完成；DEV-019 内存失败与新版多日观察缺项保留。",
     "delivery": {
       "status": "passed_installed_and_started",
       "packageCommit": "dc9288bcd99b32db25df9da3c56cab964e642d44",
@@ -1330,5 +1858,25 @@
     },
     "currentInstalledVersion": "0.1.7",
     "currentDeliveryReceipt": "artifacts/reliability-017-delivery.json"
-  }
+  },
+  "oneClickCleanup": {
+    "status": "planned",
+    "plannedAt": "2026-10-06",
+    "sourceCommit": "7da7c63830fb6c77f646eacccf5d7ee243d72a91",
+    "subplan": "2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+    "tasks": [
+      "DEV-023",
+      "DEV-024",
+      "DEV-025",
+      "DEV-026",
+      "DEV-027",
+      "DEV-028"
+    ],
+    "nextTaskId": "DEV-023",
+    "definition": "已启用规则自动汇集，统一预览后一次确认，执行至多 1000 个合格对象的本批；剩余内容另行预览确认。",
+    "acceptance": "not_run",
+    "realUserFilesDeleted": 0,
+    "mcpSync": "pending_unavailable"
+  },
+  "updatedAt": "2026-10-06"
 }
