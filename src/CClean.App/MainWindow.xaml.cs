@@ -20,28 +20,31 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer capacityTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private bool capacityReading;
     private bool dark;
+    private bool preferencesLoaded;
+    private string? initializationError;
     private ViewModels.AppPreferences preferences = new();
     private ViewModels.WorkspaceViewModel? workspace;
     private Views.ProjectSetupView? projectSetup;
     private Views.OverviewView? overview;
     private Views.ProjectWorkbenchView? workbench;
+    private Views.ProjectWorkbenchView? activities;
     private Views.CleanupPreviewView? cleanup;
     private Views.CleanupHistoryView? cleanupHistory;
-    public MainWindow()
+    private Action? returnToContext;
+    internal ViewModels.WorkspaceViewModel? Workspace => workspace;
+    private readonly bool enableSessionDiscovery;
+    public MainWindow() : this(true) { }
+    internal MainWindow(bool enableSessionDiscovery)
     {
+        this.enableSessionDiscovery = enableSessionDiscovery;
         InitializeComponent();
         Navigation.SelectedIndex = 0;
         capacityTimer.Tick += async (_, _) => await ReadCapacity();
         capacityTimer.Start();
         FitWorkArea();
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(FitWorkArea);
-        Closing += async (_, e) =>
-        {
-            if (workspace?.CleanupRunning != true) return;
-            e.Cancel = true; workspace.CancelCleanup();
-            try { await workspace.CleanupTask!; } catch { }
-            Close();
-        };
+        SidebarScroll.SizeChanged += (_, _) => SidebarBody.MinHeight = Math.Max(0, SidebarScroll.ActualHeight - 56);
+        InitializeLifecycle();
     }
     private void FitWorkArea()
     {
@@ -55,23 +58,41 @@ public partial class MainWindow : Window
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await ReadCapacity();
+        if (exitRequested) return;
+        var dataDirectory = Environment.GetEnvironmentVariable("CCLEAN_DATA_DIR") ??
+            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CClean");
         try
         {
-            workspace = new();
-            preferences = ViewModels.AppPreferences.Load(workspace.DataDirectory); dark = preferences.Dark; ApplyTheme();
-            workspace.Changed += () => Status.Text = workspace.Status;
-            projectSetup = new(workspace);
-            overview = new(workspace); workbench = new(workspace, preferences);
+            preferences = ViewModels.AppPreferences.Load(dataDirectory);
+            preferencesLoaded = true; dark = preferences.Dark; ApplyTheme();
+            workspace = new(enableSessionDiscovery);
+            workspace.Changed += UpdateObservationStatus;
+            overview = new(workspace);
             cleanup = new(workspace);
-            cleanupHistory = new(workspace);
-            overview.CrashDumpPreviewRequested += async () => { NavigateTo("清理中心"); await cleanup.PreviewCrashDumps(); };
-            workbench.PreviewRequested += async paths => { NavigateTo("清理中心"); await cleanup.Preview(paths); };
-            if (Navigation.SelectedIndex == 0) PageContent.Content = workbench;
+            overview.ManageScopeRequested += OpenScope;
+            ShowWorkspace();
+            UpdateObservationStatus();
             await workspace.Resume();
         }
-        catch (Exception error) { Status.Text = "本地配置不可用：" + error.Message; }
+        catch (Exception error)
+        {
+            initializationError = "数据目录：" + dataDirectory + "\n" + error.Message;
+            ShowInitializationError();
+        }
     }
-    private void OnClosed(object? sender, EventArgs e) { capacityTimer.Stop(); closing.Cancel(); workspace?.Dispose(); closing.Dispose(); }
+    private void ShowInitializationError()
+    {
+        PageTitle.Text = "本地配置不可用";
+        Status.Text = "初始化未完成，原配置文件未覆盖。";
+        ReturnButton.Visibility = Visibility.Collapsed; returnToContext = null;
+        PageContent.Content = new TextBlock
+        {
+            Text = "无法载入本地配置：" + initializationError +
+                "\n\n请检查文件内容与访问权限，修复后重新启动 CClean。当前主题可临时切换，偏好设置不会保存。",
+            TextWrapping = TextWrapping.Wrap, FontSize = 18, Margin = new Thickness(20)
+        };
+    }
+    private void OnClosed(object? sender, EventArgs e) => CompleteClosed();
     private async void Refresh(object sender, RoutedEventArgs e) => await ReadCapacity();
     private async Task ReadCapacity()
     {
@@ -79,35 +100,134 @@ public partial class MainWindow : Window
         capacityReading = true;
         try
         {
-            var space = await Task.Run(() => Core.Storage.VolumeSpaceReader.Read(Environment.SystemDirectory), closing.Token);
+            var volumes = await Task.Run(Core.Storage.VolumeSpaceReader.ReadLocalVolumes, closing.Token);
+            if (exitRequested || closing.IsCancellationRequested) return;
             if (workspace is not null) await workspace.EnforceBudget();
-            Capacity.Text = $"C: 可用 {space.UserAvailableBytes / 1073741824d:F1} GiB / {space.TotalBytes / 1073741824d:F1} GiB  ·  更新 {DateTime.Now:HH:mm:ss}";
+            if (exitRequested || closing.IsCancellationRequested) return;
+            Capacity.Text = string.Join("  ·  ", volumes.Select(v => v.Space is null ? $"{v.Root} 容量未知" :
+                $"{v.Root} 可用 {v.Space.UserAvailableBytes / 1073741824d:F1} / {v.Space.TotalBytes / 1073741824d:F1} GiB")) +
+                $"  ·  {DateTime.Now:HH:mm:ss}；容量不代表已盘点覆盖";
         }
         catch (OperationCanceledException) { }
         catch (Exception error) { Status.Text = "容量读取失败：" + error.Message; }
         finally { capacityReading = false; }
     }
 
-    private void NavigateTo(string title) => Navigation.SelectedItem = Navigation.Items.Cast<ListBoxItem>().Single(i => Equals(i.Content, title));
+    private void UpdateObservationStatus()
+    {
+        UpdateTray();
+        if (workspace is null || exitRequested) return;
+        var samples = workspace.Monitors.Values.Where(m => m.Revision > 0).Select(m => m.Snapshot.CapturedAt).ToArray();
+        Status.Text = workspace.Status + (samples.Length == 0 ? " 最后有效索引：尚未取得。" : $" 最后有效索引：{samples.Max().ToLocalTime():MM-dd HH:mm:ss}。");
+    }
+    private void OpenSpace(string root)
+    {
+        var originTitle = PageTitle.Text;
+        var restore = CapturePageContext();
+        overview?.ShowScope(root);
+        if (Navigation.SelectedIndex != 0) Navigation.SelectedIndex = 0;
+        else ShowWorkspace();
+        if (originTitle != "空间与清理")
+        {
+            ReturnButton.Content = $"← 返回{originTitle}";
+            ReturnButton.Visibility = Visibility.Visible;
+            returnToContext = restore;
+        }
+    }
+    private void OpenScope(string? root)
+    {
+        if (workspace is null) return;
+        if (projectSetup is null)
+        {
+            projectSetup = new(workspace);
+            projectSetup.SpaceRequested += OpenSpace;
+        }
+        projectSetup.ShowScope(root);
+        ShowAuxiliary("管理范围", projectSetup);
+    }
+    private void OpenScopeManagement(object sender, RoutedEventArgs e) => OpenScope(null);
+    private void OpenHistory(object sender, RoutedEventArgs e)
+    {
+        if (workspace is null) return;
+        cleanupHistory ??= new(workspace);
+        ShowAuxiliary("处理历史", cleanupHistory);
+    }
+    private void OpenSettings(object sender, RoutedEventArgs e)
+    {
+        if (initializationError is not null) { ShowInitializationError(); return; }
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = "工具识别与覆盖", FontSize = 21, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
+        panel.Children.Add(new TextBlock { Text = "只覆盖已确认的 Windows 物理目录；自动发现不等于找齐全部 Agent。自定义工具需在管理范围中登记，工具标签不证明独占、来源或删除资格。WSL / Docker 内部和旧版本处理不在首批范围。", Margin = new Thickness(0, 0, 0, 16) });
+        var audit = new Button { Content = "打开已实现功能审计", HorizontalAlignment = HorizontalAlignment.Left }; audit.Click += OpenAudit; panel.Children.Add(audit);
+        ShowAuxiliary("设置与覆盖说明", new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+    }
+    private void ShowAuxiliary(string title, object content)
+    {
+        if (ReferenceEquals(PageContent.Content, content)) return;
+        var originTitle = PageTitle.Text;
+        var restore = CapturePageContext();
+        PageTitle.Text = title; PageContent.Content = content; ReturnButton.Visibility = Visibility.Visible;
+        ReturnButton.Content = $"← 返回{originTitle}";
+        returnToContext = restore;
+    }
+    private Action CapturePageContext()
+    {
+        var title = PageTitle.Text; var content = PageContent.Content; var index = Navigation.SelectedIndex;
+        var returnVisibility = ReturnButton.Visibility; var returnLabel = ReturnButton.Content; var priorReturn = returnToContext;
+        return () =>
+        {
+            Navigation.SelectedIndex = index; PageTitle.Text = title; PageContent.Content = content;
+            ReturnButton.Visibility = returnVisibility; ReturnButton.Content = returnLabel; returnToContext = priorReturn;
+        };
+    }
+    private void ReturnToWorkspace(object sender, RoutedEventArgs e) { if (returnToContext is { } action) action(); else ShowWorkspace(); }
 
     private void Navigate(object sender, SelectionChangedEventArgs e)
     {
-        if (PageContent is null || Navigation.SelectedItem is not ListBoxItem selected) return;
+        if (PageContent is null) return;
+        ShowWorkspace();
+    }
+    private void ShowWorkspace()
+    {
+        if (initializationError is not null) { ShowInitializationError(); return; }
+        if (Navigation.SelectedItem is not ListBoxItem selected) return;
         var title = selected.Content.ToString()!;
-        PageTitle.Text = title;
-        if (title == "空间与快清" && overview is not null) { PageContent.Content = overview; return; }
-        if (title == "项目工作台" && workbench is not null) { workbench.ShowModules(); PageContent.Content = workbench; return; }
-        if (title == "清理中心" && cleanup is not null) { PageContent.Content = cleanup; return; }
-        if (title == "清理记录" && cleanupHistory is not null) { PageContent.Content = cleanupHistory; return; }
-        if (title == "项目与设置" && projectSetup is not null) { PageContent.Content = projectSetup; return; }
-        PageContent.Content = new TextBlock { Text = title == "空间与快清" ? "尚未登记监测范围\n\n先登记一个项目或目录，建立当前文件基线后再查看增长。" : "此页面正在接入已验证的本地能力。当前未开放清理执行。",
+        PageTitle.Text = title; ReturnButton.Visibility = Visibility.Collapsed; returnToContext = null;
+        if (title == "空间与清理" && overview is not null) { PageContent.Content = overview; return; }
+        if (title == "开发活动" && workspace is not null)
+        {
+            if (activities is null)
+            {
+                activities = new(workspace, preferences, activityWorkspace: true);
+                activities.SpaceRequested += OpenSpace;
+                activities.ManageScopeRequested += OpenScope;
+            }
+            PageContent.Content = activities; return;
+        }
+        if (title == "项目与版本" && workspace is not null)
+        {
+            if (workbench is null)
+            {
+                workbench = new(workspace, preferences);
+                workbench.SpaceRequested += OpenSpace;
+                workbench.ManageScopeRequested += OpenScope;
+            }
+            PageContent.Content = workbench; return;
+        }
+        PageContent.Content = new TextBlock { Text = "正在载入本地工作区…",
             FontSize = 18, Margin = new Thickness(20) };
     }
 
     private void ToggleTheme(object sender, RoutedEventArgs e)
     {
-        dark = !dark; ApplyTheme(); preferences.Dark = dark;
-        try { if (workspace is not null) preferences.Save(workspace.DataDirectory); }
+        dark = !dark; ApplyTheme();
+        if (!preferencesLoaded || initializationError is not null || workspace is null)
+        {
+            Status.Text = "主题已临时切换；本地配置尚未成功载入，原配置文件未覆盖。";
+            return;
+        }
+        preferences.Dark = dark;
+        try { preferences.Save(workspace.DataDirectory); }
         catch (Exception error) { Status.Text = "主题已切换，但保存失败：" + error.Message; }
     }
     private void ApplyTheme()

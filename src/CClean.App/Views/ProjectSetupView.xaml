@@ -1,24 +1,35 @@
 <UserControl x:Class="CClean.App.Views.ProjectSetupView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <TabControl><TabItem Header="目录与发现"><Grid>
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+ <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"><TabControl><TabItem Header="管理监测范围"><Grid>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel>
-   <TextBlock Text="确认范围后，只读发现目录；选中候选并登记后才持续监测。" Margin="0,0,0,12"/>
+   <TextBlock Text="登记后才持续观察。盘点、观察、用途识别和清理资格分别判断；暂停保留最后索引，移除保留历史与显式保护。" Margin="0,0,0,12"/>
+   <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="12" Margin="0,0,0,12"><StackPanel><TextBlock x:Name="ScopeDetails" Text="选择下方已登记范围，查看完整路径、卷、观察状态、最后有效时间与关联依据。" TextWrapping="Wrap"/><WrapPanel Margin="0,8,0,0"><Button Content="在空间与清理查看" Click="OpenSpace"/><Button Content="复制完整路径" Click="CopyPath"/></WrapPanel></StackPanel></Border>
    <TextBlock Text="项目名称"/><TextBox x:Name="ProjectName" AutomationProperties.Name="项目名称" Margin="0,4,0,10"/>
    <DockPanel><Button DockPanel.Dock="Right" Content="选择目录" Click="Browse"/><TextBlock Text="目录路径" VerticalAlignment="Center"/></DockPanel><TextBox x:Name="RootPath" AutomationProperties.Name="目录路径" Margin="0,4,0,10"/>
    <DockPanel Margin="0,0,0,12"><TextBlock Text="工具标签" VerticalAlignment="Center" Margin="0,0,12,0"/>
-    <ComboBox x:Name="Tool" SelectedIndex="0" MinHeight="36" AutomationProperties.Name="工具标签">
-     <ComboBoxItem Content="Codex"/><ComboBoxItem Content="Claude Code"/><ComboBoxItem Content="ZCode"/><ComboBoxItem Content="通用工具"/>
-    </ComboBox>
+    <ComboBox x:Name="Tool" IsEditable="True" IsTextSearchEnabled="False" MinHeight="36" AutomationProperties.Name="工具标签，可输入自定义名称"/>
    </DockPanel>
+   <Expander Header="工具能力与覆盖（自定义标签仅手动纳入）" Margin="0,0,0,12"><TextBlock x:Name="ToolCapabilities" TextWrapping="Wrap" AutomationProperties.Name="所选工具能力与覆盖"/></Expander>
    <WrapPanel><Button x:Name="DiscoverButton" Content="只读发现 / 继续" Click="Discover"/>
     <Button Content="取消发现" Click="Cancel"/><Button x:Name="RegisterButton" Content="确认登记此目录" Click="Register"/>
-    <Button Content="暂停 / 恢复选中项目" Click="Pause"/></WrapPanel>
+    <Button Content="保存选中范围的修改" Click="SaveRegistration"/>
+    <Button Content="暂停 / 恢复选中范围" Click="Pause"/><Button Content="移除选中监测" Click="RemoveRegistration"/></WrapPanel>
+   <Expander Header="关联已登记的数据根（共享位置，不代表独占或清理授权）" Margin="0,8,0,0">
+    <StackPanel><TextBlock Text="先在下方选择项目，再选关联根；同一物理根复用观察器。"/>
+     <ComboBox x:Name="RelatedRoot" DisplayMemberPath="Root" SelectionChanged="RelatedRootChanged" AutomationProperties.Name="关联的已登记数据根"/>
+     <TextBlock Text="确认关联的具体路径"/><TextBox x:Name="RelatedPath" AutomationProperties.Name="确认关联路径"/>
+     <TextBlock Text="关联依据（用户确认的位置关系，不证明写入者或独占）"/><TextBox x:Name="RelatedEvidence" MaxLength="240" AutomationProperties.Name="关联依据"/>
+     <WrapPanel><Button Content="确认关联" Click="LinkScope"/><Button Content="移除选中的关联" Click="UnlinkScope"/></WrapPanel>
+     <ListBox x:Name="RelatedScopes" DisplayMemberPath="Path" MaxHeight="100" AutomationProperties.Name="当前项目的关联范围"/>
+     <TextBlock x:Name="RelatedStatus" TextWrapping="Wrap"/>
+    </StackPanel>
+   </Expander>
   </StackPanel>
   <TextBlock Grid.Row="1" x:Name="Feedback" Margin="0,4,0,12" Text="尚未发现。也可以直接输入已知目录登记。" AutomationProperties.LiveSetting="Polite"/>
-  <TabControl Grid.Row="2">
-   <TabItem Header="已登记范围"><DataGrid x:Name="Registered" SelectionMode="Single">
-    <DataGrid.Columns><DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="150"/><DataGridTextColumn Header="目录" Binding="{Binding Root}" Width="*"/>
+  <TabControl Grid.Row="2" Height="280">
+   <TabItem Header="已登记范围"><DataGrid x:Name="Registered" SelectionMode="Single" SelectionChanged="SelectRegistered">
+    <DataGrid.Columns><DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="130"/><DataGridTextColumn Header="完整路径（选中查看）" Binding="{Binding Root}" Width="*"/>
      <DataGridTextColumn Header="工具" Binding="{Binding Tool}" Width="110"/><DataGridCheckBoxColumn Header="暂停" Binding="{Binding Paused}" Width="70"/></DataGrid.Columns>
    </DataGrid></TabItem>
    <TabItem Header="发现候选"><DataGrid x:Name="Candidates" SelectionChanged="SelectCandidate" SelectionMode="Single">
@@ -26,6 +37,6 @@
      <DataGridTextColumn Header="已知字节" Binding="{Binding KnownBytes}" Width="110"/><DataGridTextColumn Header="未知数" Binding="{Binding Unknown}" Width="80"/></DataGrid.Columns>
    </DataGrid></TabItem>
   </TabControl>
-  <TextBlock Grid.Row="3" Text="只显示项目候选，排除系统范围。自动发现的会话请在左侧“项目会话”查看。登记不授予删除权限。" Margin="0,12,0,0"/>
- </Grid></TabItem></TabControl>
+  <TextBlock Grid.Row="3" Text="发现候选不等于完整 Agent 清单。会话请在“开发活动”选择项目后查看；仅支持已验证格式。编辑范围会重新建立观察，旧清理批准不会沿用。" TextWrapping="Wrap" Margin="0,12,0,0"/>
+ </Grid></TabItem></TabControl></ScrollViewer>
 </UserControl>

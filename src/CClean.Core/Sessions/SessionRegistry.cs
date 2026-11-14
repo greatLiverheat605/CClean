@@ -11,6 +11,10 @@ public enum SessionState { Active, Ended, Interrupted }
 public sealed record DevelopmentSession(Guid Id, Guid ProjectId, string Label, string Tool, DateTimeOffset Started,
     DateTimeOffset? Ended, SessionState State, string[] Dependencies, Guid? ResumedFrom = null, bool HasGap = false)
 {
+    public long ScopeRevision { get; init; } = 1;
+    public string? ProjectRoot { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ObservationKey => ScopeRevision == 1 ? ProjectId.ToString() : $"{ProjectId:D}@{ScopeRevision}";
     public string StateLabel => State switch { SessionState.Active => "活动", SessionState.Ended => "已结束（不代表可删除）", _ => "中断，结束时间未知" };
     public string Evidence => "A 级手动上下文，未经进程证实";
     [System.Text.Json.Serialization.JsonIgnore]
@@ -34,7 +38,7 @@ public sealed class SessionRegistry : IDisposable
     private readonly FileStream owner;
     private List<DevelopmentSession> sessions = [];
     public long Version { get; private set; }
-    public SessionRegistry(string dataDirectory)
+    public SessionRegistry(string dataDirectory, IEnumerable<RegisteredProject>? knownProjects = null)
     {
         root = dataDirectory;
         Directory.CreateDirectory(root);
@@ -46,13 +50,20 @@ public sealed class SessionRegistry : IDisposable
             if (new FileInfo(file).Length > 2 * 1024 * 1024) throw new IOException("会话文件超出预算。");
             var saved = JsonSerializer.Deserialize<SavedSessions>(File.ReadAllText(file)) ?? throw new IOException("会话文件无效。");
             if (saved.Schema != 1 || saved.Sessions.Count > 1000) throw new IOException("不支持的会话格式或数量。");
-            sessions = saved.Sessions;
-            Version = saved.Version;
-            if (sessions.Any(s => s.State == SessionState.Active))
+            var projects = knownProjects?.ToArray() ?? [];
+            var changed = false;
+            sessions = saved.Sessions.Select(s =>
             {
-                sessions = sessions.Select(s => s.State == SessionState.Active ? s with { State = SessionState.Interrupted, HasGap = true } : s).ToList();
-                Save();
-            }
+                var projectRoot = NormalizeProjectRoot(s.ProjectRoot);
+                if (s.ProjectRoot is null)
+                    projectRoot = NormalizeProjectRoot(projects.FirstOrDefault(p => p.Id == s.ProjectId && p.ScopeRevision == s.ScopeRevision)?.Root);
+                var restored = s with { Tool = KnownTools.NormalizeLabel(s.Tool), ProjectRoot = projectRoot };
+                if (restored.State == SessionState.Active) restored = restored with { State = SessionState.Interrupted, HasGap = true };
+                changed |= restored != s;
+                return restored;
+            }).ToList();
+            Version = saved.Version;
+            if (changed) Save();
         }
         catch { owner.Dispose(); throw; }
     }
@@ -62,12 +73,14 @@ public sealed class SessionRegistry : IDisposable
     {
         lock (sync)
         {
-            if (!KnownTools.Baseline.Any(t => t.DisplayName == tool) && tool != "通用工具") throw new ArgumentException("不支持的工具标签。");
+            tool = KnownTools.NormalizeLabel(tool);
             if (string.IsNullOrWhiteSpace(label) || label.Length > 120) throw new ArgumentException("会话名称须为 1–120 字符。");
+            var projectRoot = NormalizeProjectRoot(project.Root) ?? throw new ArgumentException("会话需要完整、明确的本地项目根。");
             var roots = (dependencies ?? []).Select(ExperimentSandbox.Normalize).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             if (roots.Length > 64) throw new ArgumentException("单会话最多关联 64 个依赖目录。");
             foreach (var path in roots) { using var lease = new DirectoryLease(path); }
-            var session = new DevelopmentSession(Guid.NewGuid(), project.Id, label.Trim(), tool, DateTimeOffset.UtcNow, null, SessionState.Active, roots, resumedFrom);
+            var session = new DevelopmentSession(Guid.NewGuid(), project.Id, label.Trim(), tool, DateTimeOffset.UtcNow, null, SessionState.Active, roots, resumedFrom)
+                { ScopeRevision = project.ScopeRevision, ProjectRoot = projectRoot };
             var previous = sessions;
             sessions = sessions.Where(s => s.State != SessionState.Ended || s.Ended >= DateTimeOffset.UtcNow.AddDays(-30)).ToList();
             if (sessions.Count >= 1000) { sessions = previous; throw new IOException("会话记录已达上限，请等待历史保留期结束。"); }
@@ -93,7 +106,8 @@ public sealed class SessionRegistry : IDisposable
         lock (sync)
         {
             var session = sessions.Single(s => s.Id == id);
-            if (session.State != SessionState.Interrupted || session.ProjectId != project.Id) throw new InvalidOperationException("仅可恢复匹配项目的中断会话。");
+            if (session.State != SessionState.Interrupted || session.ProjectId != project.Id || session.ScopeRevision != project.ScopeRevision)
+                throw new InvalidOperationException("仅可恢复同一项目与范围版本的中断会话；范围调整后请新建会话。");
             if (sessions.Any(s => s.ResumedFrom == id && s.State == SessionState.Active)) throw new InvalidOperationException("该中断会话已恢复。");
             return Begin(project, session.Tool, session.Label, session.Dependencies, id);
         }
@@ -103,18 +117,34 @@ public sealed class SessionRegistry : IDisposable
         lock (sync)
         {
             var scopes = new List<ActivityScope>();
+            var unbound = sessions.Any(s => s.State != SessionState.Ended && s.ProjectRoot is null);
+            const string unboundReason = "旧会话原项目根无法可靠核验，当前范围与依赖保持未知保护；请明确结束该会话";
             foreach (var project in projects)
             {
-                var linked = sessions.Where(s => s.ProjectId == project.Id).ToArray();
+                var linked = sessions.Where(s => s.ProjectId == project.Id && s.ScopeRevision == project.ScopeRevision).ToArray();
                 var active = linked.Any(s => s.State == SessionState.Active);
-                var known = !project.Paused && observationKnown(project.Root) && !linked.Any(s => s.State == SessionState.Interrupted);
-                scopes.Add(new(project.Root, active, known, active ? "手动会话活动" : known ? "仅观察状态；结束不授予删除资格" : "活动观察不完整"));
-                foreach (var session in linked)
-                    foreach (var path in session.Dependencies)
-                        scopes.Add(new(path, session.State == SessionState.Active, session.State != SessionState.Interrupted && observationKnown(path), "会话关联依赖"));
+                var known = !unbound && !project.Paused && observationKnown(project.Root) && !linked.Any(s => s.State == SessionState.Interrupted);
+                scopes.Add(new(project.Root, active, known, unbound ? unboundReason : active ? "手动会话活动" : known ? "仅观察状态；结束不授予删除资格" : "活动观察不完整"));
+            }
+            // Registration edits do not move a session's original root or release its dependency protection.
+            foreach (var session in sessions)
+            {
+                if (session.State != SessionState.Ended && session.ProjectRoot is string projectRoot)
+                    scopes.Add(new(projectRoot, session.State == SessionState.Active,
+                        !unbound && session.State != SessionState.Interrupted && observationKnown(projectRoot),
+                        unbound ? unboundReason : session.State == SessionState.Active ? "手动会话原项目根，移除或调整监测不结束会话" : "原项目根会话中断，保持未知保护"));
+                foreach (var path in session.Dependencies)
+                    scopes.Add(new(path, session.State == SessionState.Active,
+                        !unbound && session.State != SessionState.Interrupted && observationKnown(path), unbound ? unboundReason : "会话关联依赖"));
             }
             return new(Version, scopes);
         }
+    }
+    private static string? NormalizeProjectRoot(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path) || path.Any(char.IsControl)) return null;
+        try { return ExperimentSandbox.Normalize(path); }
+        catch (Exception error) when (error is ArgumentException or NotSupportedException or IOException or ExperimentRefusedException) { return null; }
     }
     private void Save()
     {

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using CClean.Core.Experiments;
+using CClean.Core.Files;
 using CClean.Core.Storage;
 
 namespace CClean.Core.Monitoring;
@@ -10,39 +11,64 @@ public sealed record SpaceFolder(string Path, long Bytes, int Files, bool Projec
     public string Name => System.IO.Path.GetFileName(Path.TrimEnd(System.IO.Path.DirectorySeparatorChar));
     public string Size => IndexedFile.FormatBytes(Bytes);
     public double Share { get; init; }
+    public ContentExplanation Explanation { get; init; } = ContentClassification.Describe(Path, Project);
 }
 public sealed record SpaceSurveyResult(IReadOnlyList<SpaceFolder> Folders, long Files, long Bytes,
-    long Skipped, bool HasMore, bool Limited);
+    long Skipped, bool HasMore, bool Limited)
+{
+    public string Root { get; init; } = "";
+    public DateTimeOffset CapturedAt { get; init; }
+    public long? KnownUniqueLogicalBytes { get; init; }
+    public long? KnownAllocatedBytes { get; init; }
+    public long UnknownAllocationObjects { get; init; }
+    public long DuplicatePaths { get; init; }
+    public bool IdentityBudgetReached { get; init; }
+    public bool IsStale { get; init; }
+    public bool AllocationComplete => !IsStale && KnownAllocatedBytes is not null && !HasMore && !Limited &&
+        Skipped == 0 && UnknownAllocationObjects == 0 && !IdentityBudgetReached;
+    public string AllocationBasis => "仅本轮根内已读取身份的对象去重；独立根及父子摘要不可直接相加，分配量不是可释放承诺。";
+}
 
 // A bounded, metadata-only inventory. It neither registers watchers nor authorizes deletion.
 public sealed class SpaceSurvey : IDisposable
 {
-    private sealed class Folder(string path, string? parent, bool generated)
+    public const int MaximumIdentities = 200_000;
+    private sealed class Folder(string path, string? parent, bool excludedFromProjectDetection)
     {
         public string Path = path;
         public string? Parent = parent;
-        public bool Generated = generated, Project;
+        public bool ExcludedFromProjectDetection = excludedFromProjectDetection, Project;
         public long Bytes;
         public int Files;
     }
-    private static readonly HashSet<string> GeneratedNames = new(StringComparer.OrdinalIgnoreCase)
-        { "node_modules", ".git", ".venv", "venv", "site-packages", "bin", "obj", "__pycache__", "_cacache", ".codex", ".claude", ".zcode", ".vscode", ".cache", ".npm", ".nuget", "vendor" };
+    // Prevent dependency/tool manifests being mistaken for projects. This is not a content or cleanup classification.
+    private static readonly HashSet<string> ProjectDetectionExclusions = new(StringComparer.OrdinalIgnoreCase)
+        { "node_modules", ".git", ".venv", "venv", "site-packages", "bin", "obj", "__pycache__", "_cacache", ".codex", ".claude", ".zcode", ".vscode", ".cache", ".npm", ".nuget", "vendor", "target", "dist", "build" };
+    private static readonly HashSet<string> BuildDirectoryNames = new(StringComparer.OrdinalIgnoreCase) { "target", "dist", "build", "bin", "obj" };
     private readonly Dictionary<string, Folder> folders = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<string> pending = new();
     private readonly HashSet<string> cacheRoots;
+    // ponytail: retain identities, not file snapshots; stop accounting new identities at this bounded ceiling.
+    private readonly Dictionary<string, (long Logical, long Allocated)> identities = new(StringComparer.Ordinal);
+    private readonly int identityLimit;
     private IEnumerator<string>? entries;
     private string current = "";
     private long files, bytes, skipped;
-    private bool limited;
+    private long knownUniqueLogical, knownAllocated, unknownAllocation, duplicatePaths;
+    private bool limited, identityBudgetReached;
     public string Root { get; }
 
-    public SpaceSurvey(string root)
+    public SpaceSurvey(string root, int identityLimit = MaximumIdentities)
     {
+        if (identityLimit is < 1 or > MaximumIdentities) throw new ArgumentOutOfRangeException(nameof(identityLimit));
+        this.identityLimit = identityLimit;
         Root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         if (IsSystemPath(Root, checkAncestors: true)) throw new ExperimentRefusedException("系统文件和系统目录不参与空间盘点，请选择项目或用户目录。", 3);
         using var lease = new DirectoryLease(Root);
         cacheRoots = new(CommonCacheRoots().Select(p => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p))), StringComparer.OrdinalIgnoreCase);
-        folders.Add(Root, new(Root, null, false));
+        folders.Add(Root, new(Root, null, Root.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(p => ProjectDetectionExclusions.Contains(p) && !BuildDirectoryNames.Contains(p)) ||
+            BuildDirectoryNames.Contains(Path.GetFileName(Root)) || cacheRoots.Contains(Root)));
         pending.Enqueue(Root);
     }
 
@@ -85,17 +111,18 @@ public sealed class SpaceSurvey : IDisposable
                         if (((int)attributes & (0x400 | 0x1000 | 0x40000 | 0x400000)) != 0) { skipped++; continue; }
                         var name = Path.GetFileName(path);
                         var parent = folders[current];
-                        if (!parent.Generated && IsProjectMarker(name)) parent.Project = true;
+                        if (!parent.ExcludedFromProjectDetection && IsProjectMarker(name)) parent.Project = true;
                         if (attributes.HasFlag(FileAttributes.Directory))
                         {
                             if (folders.Count >= 50_000) { limited = true; break; }
-                            folders.Add(path, new(path, current, parent.Generated || GeneratedNames.Contains(name) || cacheRoots.Contains(path)));
+                            folders.Add(path, new(path, current, parent.ExcludedFromProjectDetection || ProjectDetectionExclusions.Contains(name) || cacheRoots.Contains(path)));
                             pending.Enqueue(path);
                         }
                         else
                         {
                             var length = new FileInfo(path).Length;
                             files++; bytes = checked(bytes + length);
+                            AccountAllocation(WindowsFileMetadata.Read(path, lease));
                             for (Folder? folder = parent; folder is not null; folder = folder.Parent is null ? null : folders[folder.Parent])
                             { folder.Bytes = checked(folder.Bytes + length); folder.Files++; }
                         }
@@ -109,10 +136,37 @@ public sealed class SpaceSurvey : IDisposable
         return Snapshot();
     }
 
-    public SpaceSurveyResult Snapshot() => new(folders.Values.Where(f => !IsUserCacheContainer(f.Path)).Select(f => new SpaceFolder(f.Path, f.Bytes, f.Files, f.Project,
-        cacheRoots.Contains(f.Path) ? "缓存 / 临时文件" : f.Project ? "项目" : f.Generated ? "工具 / 临时目录" : "目录",
-        f.Project ? VersionFamily(f.Path) : "")).ToArray(), files, bytes, skipped,
-        !limited && (entries is not null || pending.Count > 0), limited);
+    private void AccountAllocation(FileSnapshot file)
+    {
+        if (file.Identity is null || file.LogicalBytes is null || file.AllocatedBytes is null ||
+            file.Attributes.HasFlag(FileAttributes.ReparsePoint)) { unknownAllocation++; return; }
+        var incomplete = !file.StreamsComplete || file.HasNamedStreams;
+        if (identities.TryGetValue(file.Identity, out var previous))
+        {
+            duplicatePaths++;
+            // A changing hard-linked object is not a consistent allocation observation.
+            if (incomplete || previous.Logical != file.LogicalBytes || previous.Allocated != file.AllocatedBytes) unknownAllocation++;
+            return;
+        }
+        if (identities.Count == identityLimit) { identityBudgetReached = true; unknownAllocation++; return; }
+        if (incomplete) unknownAllocation++;
+        identities.Add(file.Identity, (file.LogicalBytes.Value, file.AllocatedBytes.Value));
+        knownUniqueLogical = checked(knownUniqueLogical + file.LogicalBytes.Value);
+        knownAllocated = checked(knownAllocated + file.AllocatedBytes.Value);
+    }
+
+    public SpaceSurveyResult Snapshot() => new(folders.Values.Where(f => !IsUserCacheContainer(f.Path)).Select(f =>
+    {
+        var explanation = ContentClassification.Describe(f.Path, f.Project);
+        return new SpaceFolder(f.Path, f.Bytes, f.Files, f.Project, explanation.Category, f.Project ? VersionFamily(f.Path) : "") { Explanation = explanation };
+    }).ToArray(), files, bytes, skipped,
+        !limited && (entries is not null || pending.Count > 0), limited)
+    {
+        Root = Root, CapturedAt = DateTimeOffset.UtcNow,
+        KnownUniqueLogicalBytes = identities.Count > 0 || (files == 0 && skipped == 0 && !limited && entries is null && pending.Count == 0) ? knownUniqueLogical : null,
+        KnownAllocatedBytes = identities.Count > 0 || (files == 0 && skipped == 0 && !limited && entries is null && pending.Count == 0) ? knownAllocated : null,
+        UnknownAllocationObjects = unknownAllocation, DuplicatePaths = duplicatePaths, IdentityBudgetReached = identityBudgetReached
+    };
 
     public static bool IsSystemPath(string path, bool checkAncestors = false)
     {

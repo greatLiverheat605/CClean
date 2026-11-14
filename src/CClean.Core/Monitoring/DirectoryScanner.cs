@@ -46,9 +46,10 @@ public static class DirectoryScanner
                         continue;
                     }
                     if (files.Count >= maxFiles) throw new IOException("Snapshot file limit exceeded.");
-                    var file = WindowsFileMetadata.Read(entry, lease);
-                    var key = absolutePaths ? file.Path : Path.GetRelativePath(root, entry);
-                    if (previous is not null && previous.TryGetValue(key, out var old) && old == file) file = old;
+                    var key = absolutePaths ? entry : Path.GetRelativePath(root, entry);
+                    FileSnapshot? old = null;
+                    previous?.TryGetValue(key, out old);
+                    var file = WindowsFileMetadata.Read(entry, lease, old);
                     files.Add(absolutePaths ? file.Path : key, file);
                     if (file.Identity is null && gaps.Count < 1000) gaps.Add("Metadata unavailable");
                 }
@@ -59,6 +60,10 @@ public static class DirectoryScanner
                 if (files.Count >= maxFiles) break;
             }
         }
-        return new(files, gaps, DateTimeOffset.UtcNow) { PathsAreAbsolute = absolutePaths };
+        IReadOnlyDictionary<string, FileSnapshot> retained = files;
+        if (previous is not null && files.Count == previous.Count &&
+            files.All(entry => previous.TryGetValue(entry.Key, out var old) && ReferenceEquals(entry.Value, old)))
+            retained = previous;
+        return new(retained, gaps, DateTimeOffset.UtcNow) { PathsAreAbsolute = absolutePaths };
     }
 }

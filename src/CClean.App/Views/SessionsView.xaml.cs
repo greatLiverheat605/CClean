@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using CClean.App.ViewModels;
 using CClean.Core.Projects;
 using CClean.Core.Sessions;
+using CClean.Core.Tools;
 
 namespace CClean.App.Views;
 
@@ -20,12 +21,27 @@ public partial class SessionsView : UserControl
     public SessionsView(WorkspaceViewModel workspace)
     {
         InitializeComponent(); this.workspace = workspace;
+        Tool.ItemsSource = KnownTools.RegistrationLabels;
+        Tool.SelectedIndex = 0;
+        Tool.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent, new TextChangedEventHandler(ToolChanged));
+        ShowToolCapabilities();
         Project.ItemsSource = workspace.Projects;
         workspace.SessionsDiscovered += RefreshDiscovered;
+        workspace.Projects.CollectionChanged += (_, _) => Refresh();
         Loaded += (_, _) => RefreshDiscovered();
         Loaded += (_, _) => { if (Project.SelectedIndex < 0 && Project.Items.Count > 0) Project.SelectedIndex = 0; Refresh(); };
     }
-    private void Refresh() => Sessions.ItemsSource = workspace.Sessions.All.Where(s => scope is null || s.ProjectId == scope.RegistrationId).OrderByDescending(s => s.Started).ToArray();
+    private bool Detached(DevelopmentSession session) => session.State != SessionState.Ended &&
+        (session.ProjectRoot is null || !workspace.Projects.Any(p => p.Id == session.ProjectId && p.ScopeRevision == session.ScopeRevision));
+    private void Refresh()
+    {
+        var sessions = workspace.Sessions.All;
+        var detached = sessions.Count(Detached);
+        Sessions.ItemsSource = sessions.Where(s => scope is null || s.ProjectId == scope.RegistrationId ||
+            IncludeDetached.IsChecked == true && Detached(s)).OrderByDescending(s => s.Started).ToArray();
+        SessionNotice.Text = $"另有 {detached} 个已移除 / 旧范围或来源未知的未结束会话。移除监测不会结束会话；结束会解除该手动保护，仍需规则与当前观察核验。";
+    }
+    private void DetachedChanged(object sender, RoutedEventArgs e) { if (workspace is not null) Refresh(); }
     private async void Discover(object sender, RoutedEventArgs e) => await workspace.DiscoverSessions();
     private void SearchDiscovered(object sender, TextChangedEventArgs e) { if (workspace is not null) RefreshDiscovered(); }
     private void RefreshDiscovered()
@@ -60,7 +76,7 @@ public partial class SessionsView : UserControl
         try
         {
             if (Project.SelectedItem is not RegisteredProject project) throw new InvalidOperationException("请先登记并选择项目。");
-            workspace.Sessions.Begin(project, ((ComboBoxItem)Tool.SelectedItem).Content.ToString()!, Label.Text,
+            workspace.Sessions.Begin(project, Tool.Text, Label.Text,
                 Dependencies.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             Refresh(); Feedback.Text = "会话已开始，项目及关联依赖受活动保护；仅表示手动上下文。";
         }
@@ -84,5 +100,11 @@ public partial class SessionsView : UserControl
             Refresh(); Feedback.Text = "已建立新的会话时间段；原中断区间仍保留。";
         }
         catch (Exception error) { Feedback.Text = error.Message; }
+    }
+    private void ToolChanged(object sender, TextChangedEventArgs e) => ShowToolCapabilities();
+    private void ShowToolCapabilities()
+    {
+        try { ToolCapabilities.Text = KnownTools.Describe(Tool.Text).Summary; }
+        catch (ArgumentException error) { ToolCapabilities.Text = error.Message; }
     }
 }

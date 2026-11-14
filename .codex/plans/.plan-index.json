@@ -1,26 +1,109 @@
 {
   "schemaVersion": 1,
-  "activePlanId": "CCLEAN-20260917-DEV",
-  "activePlan": "current/2026-09-17_cclean-development.md",
-  "taskBoard": "current/2026-09-17_cclean-development.tasks.json",
+  "activePlanId": "CCLEAN-20261023-R1",
+  "activePlan": "current/2026-10-23_cclean-first-release.md",
+  "taskBoard": "current/2026-10-23_cclean-first-release.tasks.json",
   "status": "in_progress",
-  "nextTaskId": "DEV-023",
-  "requiredTaskCount": 26,
-  "optionalTaskCount": 2,
+  "nextTaskId": "R1-003",
+  "requiredTaskCount": 12,
+  "optionalTaskCount": 0,
   "mcpSyncStatus": "pending_unavailable",
-  "sourceCommit": "44cd8c4fd11ba99a1910f301390363d328ff95b8",
+  "sourceCommit": "7d63047fefb10645181c3e69c0479a940bbe50fa",
   "createdAt": "2026-09-17T16:08:28+08:00",
   "plans": [
     {
       "id": "CCLEAN-20260917-DEV",
       "file": "current/2026-09-17_cclean-development.md",
-      "status": "in_progress"
+      "status": "in_progress",
+      "role": "historical_reference",
+      "taskBoard": "current/2026-09-17_cclean-development.tasks.json",
+      "nextTaskIdAtHandoff": "DEV-023",
+      "activeSubplanAtHandoff": "current/2026-09-17_cclean-development/sub-028-one-click-cleanup.md",
+      "validationSummaryAtHandoff": "截至仓库交付记录：0.1.7 已安装，93 项回归通过；npm 正向 UI、新版多日观察和内存门槛仍有缺项。2026-10-06 仅追加 DEV-023～028 一键清理规划，未实施、未重新验证。"
+    },
+    {
+      "id": "CCLEAN-20261023-R1",
+      "file": "current/2026-10-23_cclean-first-release.md",
+      "taskBoard": "current/2026-10-23_cclean-first-release.tasks.json",
+      "status": "in_progress",
+      "role": "active",
+      "scopeStatus": "confirmed"
     }
   ],
-  "validationSummary": "截至仓库交付记录：0.1.7 已安装，93 项回归通过；npm 正向 UI、新版多日观察和内存门槛仍有缺项。2026-10-06 仅追加 DEV-023～028 一键清理规划，未实施、未重新验证。",
+  "validationSummary": "2026-11-05：完整WPF最终同版两次十万对象600秒空闲峰值199143424/196190208B通过，受控空闲失败外层退出1；研究两批各一万项完成及审计恢复通过，但宿主峰值228409344B超200MiB，后续批后扫描可耗尽前批5分钟证据期限。最终Release零警告错误，非显式容量组272/273，ObjectReviewV1组件1000项到期失败；十批与实际规则未验。R1-003仍in_progress，004/005/006/008不放行。旧失败保留，研究租约不接入产品，无打包、安装、提交、推送或既有用户文件清理。",
   "personalUseEvidence": "docs/testing/personal-acceptance.md",
   "storageExperienceEvidence": "docs/testing/storage-home-acceptance.md",
   "implementedFeatureAudit": "docs/audit/implemented-features.md",
-  "updatedAt": "2026-10-06",
-  "activeSubplan": "current/2026-09-17_cclean-development/sub-028-one-click-cleanup.md"
+  "updatedAt": "2026-11-05",
+  "scopeDecision": "D-12",
+  "pageSpec": "current/2026-10-23_cclean-first-release/page-spec.md",
+  "validationHistory": [
+    {
+      "date": "2026-10-24",
+      "summary": "2026-10-24 R1-001/002组件passed；007/009仍pending_validation。两种隔离写入租约14组均有反例，结论insufficient，不改生产共享/活动保护。紧凑清单/完整分页/恢复/历史drain完成组件优化；最终Release零警告错误、158回归、18历史组件通过。解锁后真实工作台及600px历史页补验；保留矮窗失败并修复，尾页/三模式/退出通过所测检查。003真实watcher连续执行与批次出口未过，004/005/006依赖不放行；006/008只记录前置组件。安装版/多DPI/完整键盘/托盘系统会话/用户独立闭环及72小时未验；旧28项和200.73MiB失败保留；无安装提交、现有用户文件清理或远端MCP同步。"
+    },
+    {
+      "date": "2026-10-25",
+      "summary": "2026-10-25 D-13/B 对象级契约实现与隔离验证完成：真实 watcher 连续 3/100/1000 项通过；最终1000项64.221秒，原始通知/来源不确定/逐项复核保留；父元数据混合风险案例和危险停止矩阵通过。Release零警告错误，190回归、13 Workspace保护接线通过。中间到期、解码与观察不可靠失败均保留并修复复测。新契约只供隔离验证，普通入口仍严格；真实Node消费者阻止npm候选，正向Workspace清理未验。跨批仍受30分钟近期活动保护，1001/10000只验证拒绝截断，100000确认成本未通过，R1-003整体不放行。 旧28项及200.73MiB失败保留；安装版/多DPI/用户独立闭环/资源/72小时仍待验。"
+    },
+    {
+      "date": "2026-10-25",
+      "summary": "2026-10-25 跨批证据衔接组件完成：同一执行器完整成功后可生成新的待确认清单；真实 watcher 的 3批×1项、3批×100项通过，原始活动与未选文件保留。Release零警告错误，210/210回归（新增20项跨批检查）、13项Workspace保护检查通过。前批5分钟证据期限、每批明确确认、有界回执与失败停止保留。仅核心API/隔离验证，未接入Workspace/UI连续操作；普通入口仍严格。本机Node消费者仍阻止正向清理。100000项至少100次确认、实际规则/容量/资源及安装版验收未完成；R1-003仍in_progress，004/005/006依赖不放行。 旧28项及200.73MiB失败保留；多DPI/用户独立闭环/72小时仍待验。"
+    },
+    {
+      "date": "2026-10-25",
+      "summary": "2026-10-25 继续推进：Workspace 跨批预览已接入同进程任务/取消/互斥/退出管理，仅供隔离验证；修复页面预览切页、取消、到期、转储枚举重入、主窗退出等待和空间测量未知反馈。首次drain忙循环失败已保留并修复。Release零警告错误，210/210回归、21预览Workspace、13真实消费者保护、20主窗检查及2退出屏障场景通过。桌面锁屏，实际UI/多DPI未验。编码研究10000项约3.39MB、100000项被8MiB拒绝；新复核时机或首批规模需用户选择，R1-003仍in_progress，后续依赖不放行。 补修确认后准备期停止请求丢失；最终21项预览检查通过。"
+    },
+    {
+      "date": "2026-10-25",
+      "summary": "2026-10-25 获批固定清单分段复核研究完成，但容量方案不足：真实 watcher 1000/1001 项约23秒完成，10000项在5分钟到期时仅完成1781项，等待扫描门时停止；8219项及未选择文件保留。Release零警告错误，233项非容量回归、3项进程中断恢复、13消费者保护和21预览生命周期检查通过；容量测试2通过1失败，失败证据保留。普通入口仍1000项且不启用研究契约。R1-003保持in_progress，004/005/006/008依赖不放行；实际规则/资源/安装UI/72小时仍待验。"
+    },
+    {
+      "date": "2026-10-25",
+      "summary": "2026-10-25 吞吐与工作台优化完成本轮验证：Release 零警告错误，235 项非容量回归、25 项研究保护检查、3 项进程恢复、24 项主窗及最新 13 项消费者保护通过。小根 1000/1001/10000 项通过，一万项执行 173.928 秒；十万文件根批准一万项仍失败，到期完成 6549 项，扫描门等待 197.577 秒，测试宿主峰值 250.5 MiB。3451 个未完成批准对象和全部 90000 个未批准对象保留。R1-003 仍 in_progress，后续依赖未放行；007/009 待完整真实验收，资源/72 小时/安装升级及用户独立验收未关闭。旧失败与旧任务保留，无安装提交或既有用户文件清理。"
+    },
+    {
+      "date": "2026-10-28",
+      "summary": "2026-10-28 产出 0.2.0-preview.1 可追溯自包含安装包；保留未提交工作。235 回归、36 定向检查、24 主窗/21 预览/13 消费者保护/14 偏好检查通过，Release 零警告错误。十万文件根一万项完整清单 198.126 秒完成，90000 未批准文件保留；测试宿主峰值约 253 MiB，资源与实际多批未通过。普通入口严格且最多1000项，研究未启用。R1-003仍in_progress，规则/保留/统一跨批依赖未放行；完整UI/多DPI、72小时、安装升级与用户独立验收仍待办。发布目录隔离启动/双启动通过；桌面工具native pipe缺失，本轮未做实际人机交互验收，未安装到现有用户环境。"
+    },
+    {
+      "date": "2026-11-05",
+      "summary": "完整WPF最终同版两次600秒空闲峰值199143424/196190208B通过；受控失败子进程和外层均退出1。研究两批各一万项实际完成与审计恢复通过，但宿主峰值228409344B超200MiB；后来首批临界耗时使批后扫描后前批证据到期，十批未运行。最终Release零警告错误，非显式容量组272/273，ObjectReviewV1组件1000项到期失败。R1-003保持in_progress，004/005/006/008不放行，研究租约未接入产品。证据见docs/testing/2026-11-05-r1-003-memory-followup.md。"
+    }
+  ],
+  "safetyContractDecision": "D-13",
+  "latestEvidence": "docs/testing/2026-11-05-r1-003-memory-followup.md",
+  "lastResearch": {
+    "path": "current/2026-10-23_cclean-first-release/sub-003-segment-research.md",
+    "status": "completed_insufficient"
+  },
+  "activeResearch": "current/2026-10-23_cclean-first-release/sub-014-memory-continuity.md",
+  "lastCompletedSubplan": "current/2026-10-23_cclean-first-release/sub-013-preview-package.md",
+  "previewDelivery": {
+    "version": "0.2.0-preview.1",
+    "status": "user_reported_invalid",
+    "installer": "artifacts/packages/CClean-0.2.0-preview.1-internal-win-x64.exe",
+    "provenance": "artifacts/packages/CClean-0.2.0-preview.1-build.json",
+    "evidence": "docs/testing/2026-10-28-preview-package.md",
+    "installedToUserEnvironment": false,
+    "releaseAcceptance": "pending",
+    "previousStatus": "preview_built_not_release_accepted",
+    "reportedAt": "2026-11-04",
+    "failureCause": "unknown",
+    "repackaging": "deferred-by-user"
+  },
+  "currentUserDirective": {
+    "date": "2026-11-04",
+    "userInstruction": "继续原计划开发，暂不再次打包",
+    "packageStatus": "user_reported_invalid",
+    "failureDetails": "用户反馈无效；具体症状与根因未确定，不把旧编译/发布目录启动证据解释为安装包可用性通过。",
+    "packagingAllowedThisTurn": false,
+    "previousInstallerSha256": "17ECE68C92A4DFDBA8072CCF669F1957B2434C2504CA537BBBA18CDE2FC15A17"
+  },
+  "currentDevelopmentStage": {
+    "subplan": "current/2026-10-23_cclean-first-release/sub-014-memory-continuity.md",
+    "implementation": "isolated_scan_lease_two_batches_completed_resource_failed",
+    "capacityAndResource": "wpf_idle_passed_research_host_failed_200_mib",
+    "nextFocus": "定位第二批执行峰值与普通1000项时限，保证批后扫描仍在前批期限内；均过门槛后测完整十批，研究租约不接入产品"
+  }
 }

@@ -11,6 +11,7 @@ public partial class ProjectComparisonView : UserControl
     private CancellationTokenSource? work;
     private ProjectComparisonResult? result;
     private int generation;
+    private TaskCompletionSource? pendingComparison;
     public ProjectComparisonView()
     {
         InitializeComponent();
@@ -49,6 +50,7 @@ public partial class ProjectComparisonView : UserControl
         if (work is not null || project is null || string.IsNullOrWhiteSpace(OtherPath.Text)) return;
         var request = ++generation; var left = project.Root; var right = OtherPath.Text;
         using var cancellation = new CancellationTokenSource(); work = cancellation;
+        var completion = pendingComparison = new(TaskCreationOptions.RunContinuationsAsynchronously);
         ClearResult("正在盘点与逐字节比较，可随时取消。目录中发现的敏感数据保持未比较。"); UpdateButtons();
         try
         {
@@ -67,8 +69,10 @@ public partial class ProjectComparisonView : UserControl
         }
         catch (OperationCanceledException) { if (request == generation) ClearResult("已取消比较，没有修改任何文件。"); }
         catch (Exception error) { if (request == generation) ClearResult("无法比较：" + error.Message); }
-        finally { if (ReferenceEquals(work, cancellation)) work = null; UpdateButtons(); }
+        finally { if (ReferenceEquals(work, cancellation)) work = null; UpdateButtons(); completion.TrySetResult(); }
     }
+    public void CancelPendingOperations() => work?.Cancel();
+    public Task WaitForPendingOperationsAsync() => pendingComparison?.Task ?? Task.CompletedTask;
     private void Cancel(object sender, RoutedEventArgs e)
     {
         if (work is null) return;

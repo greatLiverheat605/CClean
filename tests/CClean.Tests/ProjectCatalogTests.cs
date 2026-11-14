@@ -72,4 +72,23 @@ public class ProjectCatalogTests
         Assert.Equal(2, result.Count);
         Assert.Equal(repo, Assert.Single(result, p => p.Root == version).ParentRoot);
     }
+
+    [Fact]
+    public void RegisteredToolDataAndUnavailableRootsRemainVisibleWithTheirObservationVersion()
+    {
+        using var box = new CClean.Core.Experiments.ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-catalog-offline-" + Guid.NewGuid().ToString("N")));
+        var agent = Path.Combine(box.RunDirectory, ".codex"); Directory.CreateDirectory(agent);
+        var missing = Path.Combine(box.RunDirectory, "unavailable");
+        var agentProject = new RegisteredProject(Guid.NewGuid(), "Agent 数据", agent, "Codex");
+        var unavailableProject = new RegisteredProject(Guid.NewGuid(), "离线范围", missing, "自定义 Agent") { Revision = 3, ScopeRevision = 2 };
+        var result = ProjectCatalog.Build([agentProject, unavailableProject], [], [agent, missing]);
+        Assert.Equal(2, result.Count);
+        var visibleAgent = Assert.Single(result, p => p.RegistrationId == agentProject.Id);
+        Assert.Null(visibleAgent.AccessProblem);
+        var unavailable = Assert.Single(result, p => p.RegistrationId == unavailableProject.Id);
+        Assert.NotNull(unavailable.AccessProblem);
+        Assert.Contains("状态未知", unavailable.Status);
+        Assert.Equal(unavailableProject.ObservationKey, unavailable.ObservationKey);
+        Assert.Equal(2, unavailable.ScopeRevision);
+    }
 }

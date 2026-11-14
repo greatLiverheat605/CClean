@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CClean.Core.Files;
 using CClean.Core.Monitoring;
+using CClean.Core.Projects;
 using Microsoft.Data.Sqlite;
 
 namespace CClean.Core.Storage;
@@ -23,6 +24,9 @@ public sealed record CoverageGap(DateTimeOffset Time, string ProjectId, string R
 
 public sealed class LocalStore : IDisposable
 {
+    public const int MaximumSummaries = 64;
+    public const int MaximumSummaryRows = 200;
+    public const int MaximumSummaryBytes = 1024 * 1024;
     private readonly object sync = new();
     private readonly SqliteConnection connection;
     public string Root { get; }
@@ -44,6 +48,7 @@ public sealed class LocalStore : IDisposable
             CREATE TABLE IF NOT EXISTS changes(id INTEGER PRIMARY KEY,time TEXT NOT NULL,project TEXT NOT NULL,path TEXT NOT NULL,identity TEXT,before_size INTEGER,after_size INTEGER,kind TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS changes_time ON changes(time);
             CREATE TABLE IF NOT EXISTS gaps(id INTEGER PRIMARY KEY,time TEXT NOT NULL,project TEXT NOT NULL,reason TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS inventory_summaries(kind TEXT NOT NULL,root TEXT NOT NULL COLLATE NOCASE,scope_revision INTEGER NOT NULL,captured_at TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(kind,root));
             PRAGMA user_version=1;
             """;
         using var version = connection.CreateCommand();
@@ -123,12 +128,14 @@ public sealed class LocalStore : IDisposable
             var changed = current.Values.Where(f => !previous.TryGetValue(f.Path, out var old) || f != old);
             foreach (var batch in changed.Chunk(500))
             {
+                var encoded = batch.Select(file => (File: file, Json: JsonSerializer.Serialize(file))).ToArray();
                 space = VolumeSpaceReader.Read(Root);
-                var allowance = batch.Sum(f => checked(JsonSerializer.Serialize(f).Length * 8L + f.Path.Length * 16L + 8192));
+                var allowance = encoded.Sum(entry => checked(entry.Json.Length * 8L + entry.File.Path.Length * 16L + 8192));
                 if (!RuntimeBudget.Evaluate(RuntimeBudget.Measure(Root), (long)space.UserAvailableBytes, true, allowance, (long)space.TotalBytes).Collect) return false;
                 using var transaction = connection.BeginTransaction();
-                foreach (var file in batch)
+                foreach (var entry in encoded)
                 {
+                    var file = entry.File;
                     using var command = connection.CreateCommand();
                     command.Transaction = transaction;
                     command.CommandText = "INSERT INTO files VALUES($p,$path,$id,$logical,$allocated,$initial,$json) ON CONFLICT(project,path) DO UPDATE SET identity=excluded.identity,logical=excluded.logical,allocated=excluded.allocated,snapshot=excluded.snapshot";
@@ -137,7 +144,7 @@ public sealed class LocalStore : IDisposable
                     command.Parameters.AddWithValue("$logical", (object?)file.LogicalBytes ?? DBNull.Value);
                     command.Parameters.AddWithValue("$allocated", (object?)file.AllocatedBytes ?? DBNull.Value);
                     command.Parameters.AddWithValue("$initial", initial ? file.LogicalBytes ?? 0 : 0);
-                    command.Parameters.AddWithValue("$json", JsonSerializer.Serialize(file));
+                    command.Parameters.AddWithValue("$json", entry.Json);
                     command.ExecuteNonQuery();
                     if (file.Identity is not null && file.LogicalBytes is not null)
                     {
@@ -186,16 +193,18 @@ public sealed class LocalStore : IDisposable
         command.Parameters.AddWithValue("$after", (object?)after ?? DBNull.Value); command.Parameters.AddWithValue("$kind", kind); command.ExecuteNonQuery();
     }
 
-    public IReadOnlyList<IndexedFile> QueryFiles(string search = "", int page = 0, string? project = null, string sort = "allocated", bool? special = null, string? root = null)
+    public IReadOnlyList<IndexedFile> QueryFiles(string search = "", int page = 0, string? project = null, string sort = "allocated", bool? special = null, string? root = null,
+        IReadOnlyList<string>? observationKeys = null)
     {
         lock (sync)
         {
             using var command = connection.CreateCommand();
             var order = sort switch { "growth" => "files.logical-COALESCE(baselines.logical,0) DESC", "modified" => "json_extract(snapshot,'$.ModifiedTime') DESC", _ => "allocated DESC" };
-            command.CommandText = "SELECT project,path,files.identity,files.logical,allocated,COALESCE(baselines.logical,0),snapshot FROM files LEFT JOIN baselines ON files.identity=baselines.identity WHERE instr(lower(path),lower($search))>0 AND ($project IS NULL OR project=$project) AND " + PathScope + " AND ($special IS NULL OR (json_extract(snapshot,'$.Exclusion') IS NOT NULL)=$special) ORDER BY " + order + ",path LIMIT 200 OFFSET $offset";
+            command.CommandText = "SELECT project,path,files.identity,files.logical,allocated,COALESCE(baselines.logical,0),snapshot FROM files LEFT JOIN baselines ON files.identity=baselines.identity WHERE instr(lower(path),lower($search))>0 AND ($project IS NULL OR project=$project) AND ($keys IS NULL OR project IN (SELECT value FROM json_each($keys))) AND " + PathScope + " AND ($special IS NULL OR (json_extract(snapshot,'$.Exclusion') IS NOT NULL)=$special) ORDER BY " + order + ",path LIMIT 200 OFFSET $offset";
             BindPathScope(command, root);
             command.Parameters.AddWithValue("$search", search); command.Parameters.AddWithValue("$offset", checked(Math.Max(page, 0) * 200));
             command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
+            command.Parameters.AddWithValue("$keys", observationKeys is null ? DBNull.Value : JsonSerializer.Serialize(observationKeys.Distinct(StringComparer.Ordinal).ToArray()));
             command.Parameters.AddWithValue("$special", special is null ? DBNull.Value : special.Value ? 1 : 0);
             using var reader = command.ExecuteReader(); var files = new List<IndexedFile>();
             while (reader.Read())
@@ -211,10 +220,13 @@ public sealed class LocalStore : IDisposable
 
     public StoreTotals Totals(string volumeRoot) => ReadTotals(null, null, Path.GetPathRoot(Path.GetFullPath(volumeRoot))!);
 
+    public StoreTotals CurrentTotals(string volumeRoot, IReadOnlyList<string> observationKeys) =>
+        ReadTotals(null, null, Path.GetPathRoot(Path.GetFullPath(volumeRoot))!, observationKeys);
+
     // Project growth describes files still in this scope; it is not the volume's historical net change.
     public StoreTotals ProjectTotals(string project, string? root = null) => ReadTotals(project, root, null);
 
-    private StoreTotals ReadTotals(string? project, string? root, string? volume)
+    private StoreTotals ReadTotals(string? project, string? root, string? volume, IReadOnlyList<string>? observationKeys = null)
     {
         lock (sync)
         {
@@ -228,6 +240,7 @@ public sealed class LocalStore : IDisposable
                         json_extract(snapshot,'$.HasNamedStreams') AS named_streams
                     FROM files
                     WHERE ($project IS NULL OR project=$project)
+                      AND ($keys IS NULL OR project IN (SELECT value FROM json_each($keys)))
                       AND ($volume IS NULL OR substr(path,1,length($volume))=$volume COLLATE NOCASE)
                       AND
                 """ + PathScope + """
@@ -237,7 +250,7 @@ public sealed class LocalStore : IDisposable
                     GROUP BY identity
                 )
                 SELECT COALESCE(SUM(logical),0),COALESCE(SUM(allocated),0),
-                    CASE WHEN $volume IS NULL THEN
+                    CASE WHEN $volume IS NULL OR $keys IS NOT NULL THEN
                         COALESCE(SUM(logical-COALESCE((SELECT logical FROM baselines WHERE baselines.identity=unique_files.identity),0)),0)
                     ELSE COALESCE(SUM(logical),0)-(SELECT COALESCE(SUM(logical),0) FROM baselines WHERE volume=$volume COLLATE NOCASE) END,
                     (SELECT COUNT(*) FROM scoped WHERE identity IS NULL OR logical IS NULL OR allocated IS NULL
@@ -247,6 +260,7 @@ public sealed class LocalStore : IDisposable
                 """;
             command.Parameters.AddWithValue("$project", (object?)project ?? DBNull.Value);
             command.Parameters.AddWithValue("$volume", (object?)volume ?? DBNull.Value);
+            command.Parameters.AddWithValue("$keys", observationKeys is null ? DBNull.Value : JsonSerializer.Serialize(observationKeys.Distinct(StringComparer.Ordinal).ToArray()));
             BindPathScope(command, root);
             using var reader = command.ExecuteReader();
             reader.Read();
@@ -305,6 +319,127 @@ public sealed class LocalStore : IDisposable
             return gaps;
         }
     }
+    public bool SaveInventorySummary(string root, long scopeRevision, SpaceSurveyResult result)
+    {
+        root = NormalizeSummaryRoot(root, scopeRevision);
+        if (result.IsStale || !root.Equals(result.Root, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("只能保存当前根的本轮盘点摘要。", nameof(result));
+        if (result.Folders.Any(f => !Cleanup.ProtectionPolicy.Contains(root, f.Path)))
+            throw new ArgumentException("盘点摘要包含当前根以外的路径。", nameof(result));
+        var folders = result.Folders.OrderByDescending(f => f.Bytes).ThenBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
+            .Take(MaximumSummaryRows).Select(f => new InventoryFolderSummary(f.Path, f.Bytes, f.Files, f.Project, f.VersionFamily)).ToArray();
+        var summary = new InventorySummary(root, scopeRevision, result.CapturedAt, result.Files, result.Bytes,
+            result.KnownUniqueLogicalBytes, result.KnownAllocatedBytes, result.UnknownAllocationObjects, result.DuplicatePaths,
+            result.Skipped, result.HasMore, result.Limited, result.IdentityBudgetReached, folders, result.Folders.Count > folders.Length);
+        return SaveSummary("survey", root, scopeRevision, result.CapturedAt, summary);
+    }
+
+    public InventorySummary? LoadInventorySummary(string root, long scopeRevision)
+    {
+        root = NormalizeSummaryRoot(root, scopeRevision);
+        var summary = LoadSummary<InventorySummary>("survey", root, scopeRevision);
+        if (summary is not null && (summary.ScopeRevision != scopeRevision || !root.Equals(summary.Root, StringComparison.OrdinalIgnoreCase) ||
+            summary.CapturedAt == default || summary.Files < 0 || summary.LogicalBytes < 0 || summary.KnownUniqueLogicalBytes < 0 ||
+            summary.KnownAllocatedBytes < 0 || summary.UnknownAllocationObjects < 0 || summary.DuplicatePaths < 0 || summary.Skipped < 0 ||
+            summary.Folders is null || summary.Folders.Count > MaximumSummaryRows ||
+            summary.Folders.Any(f => f is null || f.Bytes < 0 || f.Files < 0 || !Cleanup.ProtectionPolicy.Contains(root, f.Path))))
+            throw new InvalidDataException("盘点摘要范围、版本、计量或行数不匹配。");
+        return summary;
+    }
+
+    public InventorySummary? LoadLatestInventorySummary()
+    {
+        List<(string Root, long ScopeRevision)> candidates = [];
+        lock (sync)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT root,scope_revision FROM inventory_summaries WHERE kind='survey' ORDER BY captured_at DESC,rowid DESC LIMIT $limit";
+            command.Parameters.AddWithValue("$limit", MaximumSummaries);
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) candidates.Add((reader.GetString(0), reader.GetInt64(1)));
+        }
+        foreach (var candidate in candidates)
+        {
+            try
+            {
+                var summary = LoadInventorySummary(candidate.Root, candidate.ScopeRevision);
+                if (summary is not null) return summary;
+            }
+            catch (Exception error) when (error is InvalidDataException or ArgumentException or NotSupportedException)
+            { /* A damaged summary cannot hide another valid, bounded display snapshot. */ }
+        }
+        return null;
+    }
+
+    public bool SaveDiscoverySummary(string root, long scopeRevision, ProjectDiscoveryResult result)
+    {
+        root = NormalizeSummaryRoot(root, scopeRevision);
+        if (result.Roots.Any(r => !Cleanup.ProtectionPolicy.Contains(root, r)))
+            throw new ArgumentException("发现摘要包含当前根以外的项目路径。", nameof(result));
+        var roots = result.Roots.Take(MaximumSummaryRows).ToArray();
+        var captured = DateTimeOffset.UtcNow;
+        return SaveSummary("discovery", root, scopeRevision, captured, new DiscoverySummary(root, scopeRevision, captured,
+            roots, result.Inspected, result.Skipped, result.HasMore, result.Limited, result.Roots.Count > roots.Length));
+    }
+
+    public DiscoverySummary? LoadDiscoverySummary(string root, long scopeRevision)
+    {
+        root = NormalizeSummaryRoot(root, scopeRevision);
+        var summary = LoadSummary<DiscoverySummary>("discovery", root, scopeRevision);
+        if (summary is not null && (summary.ScopeRevision != scopeRevision || !root.Equals(summary.Root, StringComparison.OrdinalIgnoreCase) ||
+            summary.Roots is null || summary.Roots.Count > MaximumSummaryRows ||
+            summary.Roots.Any(r => !Cleanup.ProtectionPolicy.Contains(root, r)))) throw new InvalidDataException("发现摘要范围、版本或行数不匹配。");
+        return summary;
+    }
+
+    private bool SaveSummary<T>(string kind, string root, long scopeRevision, DateTimeOffset captured, T summary)
+    {
+        var payload = JsonSerializer.Serialize(summary);
+        var size = System.Text.Encoding.UTF8.GetByteCount(payload);
+        if (size > MaximumSummaryBytes) throw new IOException("摘要超过 1 MiB 预算，未覆盖已保存摘要。");
+        lock (sync)
+        {
+            var space = VolumeSpaceReader.Read(Root);
+            if (!RuntimeBudget.Evaluate(RuntimeBudget.Measure(Root), (long)space.UserAvailableBytes, true,
+                size + 16384L, (long)space.TotalBytes).Collect) return false;
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand(); command.Transaction = transaction;
+            command.CommandText = """
+                INSERT INTO inventory_summaries(kind,root,scope_revision,captured_at,payload) VALUES($kind,$root,$revision,$time,$payload)
+                ON CONFLICT(kind,root) DO UPDATE SET scope_revision=$revision,captured_at=$time,payload=$payload;
+                DELETE FROM inventory_summaries WHERE rowid NOT IN
+                    (SELECT rowid FROM inventory_summaries ORDER BY captured_at DESC,rowid DESC LIMIT $limit);
+                """;
+            command.Parameters.AddWithValue("$kind", kind); command.Parameters.AddWithValue("$root", root);
+            command.Parameters.AddWithValue("$revision", scopeRevision); command.Parameters.AddWithValue("$time", captured.ToString("O"));
+            command.Parameters.AddWithValue("$payload", payload); command.Parameters.AddWithValue("$limit", MaximumSummaries);
+            command.ExecuteNonQuery(); transaction.Commit();
+            return true;
+        }
+    }
+
+    private T? LoadSummary<T>(string kind, string root, long scopeRevision) where T : class
+    {
+        lock (sync)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT length(CAST(payload AS BLOB)),payload FROM inventory_summaries WHERE kind=$kind AND root=$root AND scope_revision=$revision";
+            command.Parameters.AddWithValue("$kind", kind); command.Parameters.AddWithValue("$root", root);
+            command.Parameters.AddWithValue("$revision", scopeRevision);
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) return null;
+            if (reader.GetInt64(0) > MaximumSummaryBytes) throw new InvalidDataException("保存的摘要超过读取预算。");
+            try { return JsonSerializer.Deserialize<T>(reader.GetString(1)) ?? throw new InvalidDataException("保存的摘要为空。"); }
+            catch (JsonException error) { throw new InvalidDataException("保存的摘要无法读取。", error); }
+        }
+    }
+
+    private static string NormalizeSummaryRoot(string root, long scopeRevision)
+    {
+        if (scopeRevision < 1) throw new ArgumentOutOfRangeException(nameof(scopeRevision));
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+    }
+
     public void Dispose() { lock (sync) connection.Dispose(); }
     private const string PathScope = "($root IS NULL OR path=$root COLLATE NOCASE OR substr(path,1,length($prefix))=$prefix COLLATE NOCASE)";
     private static void BindPathScope(Microsoft.Data.Sqlite.SqliteCommand command, string? root)
