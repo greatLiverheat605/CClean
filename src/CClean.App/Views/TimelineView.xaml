@@ -4,7 +4,7 @@
   <WrapPanel>
    <StackPanel Margin="0,0,12,8"><TextBlock Text="观察时间"/><ComboBox x:Name="TimeRange" Width="125" MinHeight="36" SelectedIndex="1" SelectionChanged="Filter" AutomationProperties.Name="时间范围"><ComboBoxItem Content="最近 15 分钟"/><ComboBoxItem Content="最近 1 小时"/><ComboBoxItem Content="最近 24 小时"/><ComboBoxItem Content="最近 7 天"/></ComboBox></StackPanel>
    <StackPanel Margin="0,0,12,8"><TextBlock Text="项目"/><ComboBox x:Name="ProjectFilter" Width="160" MinHeight="36" SelectionChanged="Filter" AutomationProperties.Name="时间线项目"/></StackPanel>
-   <StackPanel Margin="0,0,12,8"><TextBlock Text="工具"/><ComboBox x:Name="ToolFilter" Width="130" MinHeight="36" SelectedIndex="0" SelectionChanged="Filter" AutomationProperties.Name="时间线工具"><ComboBoxItem Content="全部工具"/><ComboBoxItem Content="Codex"/><ComboBoxItem Content="Claude Code"/><ComboBoxItem Content="ZCode"/></ComboBox></StackPanel>
+   <StackPanel Margin="0,0,12,8"><TextBlock Text="工具"/><ComboBox x:Name="ToolFilter" Width="130" MinHeight="36" SelectionChanged="Filter" AutomationProperties.Name="时间线工具"/></StackPanel>
    <StackPanel Margin="0,0,12,8"><TextBlock Text="依据"/><ComboBox x:Name="EvidenceFilter" Width="130" MinHeight="36" SelectedIndex="0" SelectionChanged="Filter" AutomationProperties.Name="归因依据"><ComboBoxItem Content="全部依据"/><ComboBoxItem Content="上下文关联"/><ComboBoxItem Content="共享"/><ComboBoxItem Content="未知"/></ComboBox></StackPanel>
    <Button Content="刷新时间线" Click="Refresh" VerticalAlignment="Bottom"/>
   </WrapPanel>

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using CClean.App.ViewModels;
 using CClean.Core.Attribution;
 using CClean.Core.History;
+using CClean.Core.Tools;
 
 namespace CClean.App.Views;
 
@@ -11,10 +12,12 @@ public partial class TimelineView : UserControl
     private readonly WorkspaceViewModel workspace;
     private TimelineNode? selected;
     private int revision;
-    private bool querying, refreshPending;
+    private bool querying, refreshPending, updatingTools;
+    private Task pendingQuery = Task.CompletedTask;
     private Core.Projects.ProjectModule? scope;
     public async Task ShowProject(Core.Projects.ProjectModule project)
     {
+        if (workspace.Stopping) return;
         scope = project; revision++; selected = null; Nodes.ItemsSource = null;
         Graph.Load(new([], false, DateTimeOffset.UtcNow, []), [], [], DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow);
         ProjectFilter.ItemsSource = new[] { new ProjectChoice(project.RegistrationId?.ToString() ?? "unregistered", project.Name) };
@@ -25,43 +28,71 @@ public partial class TimelineView : UserControl
     public TimelineView(WorkspaceViewModel workspace)
     {
         InitializeComponent(); this.workspace = workspace;
+        RefreshToolChoices();
         Graph.Selected += Show;
         Loaded += async (_, _) =>
         {
+            if (workspace.Stopping) return;
             if (scope is not null) { await Update(); return; }
             var selectedId = (ProjectFilter.SelectedItem as ProjectChoice)?.Id;
-            ProjectFilter.ItemsSource = new[] { new ProjectChoice(null, "全部项目") }.Concat(workspace.Projects.Select(p => new ProjectChoice(p.Id.ToString(), p.Name))).ToArray();
+            ProjectFilter.ItemsSource = new[] { new ProjectChoice(null, "全部项目") }.Concat(workspace.Projects.Select(p => new ProjectChoice(p.ObservationKey, p.Name))).ToArray();
             ProjectFilter.DisplayMemberPath = "Name";
             ProjectFilter.SelectedItem = ((IEnumerable<ProjectChoice>)ProjectFilter.ItemsSource).FirstOrDefault(p => p.Id == selectedId) ?? ProjectFilter.Items[0];
             await Update();
         };
-        workspace.Indexed += async () => { if (IsVisible) await Update(); };
+        Unloaded += (_, _) => CancelPendingOperations();
+        workspace.Indexed += () => { if (!workspace.Stopping && IsVisible) _ = Update(); };
     }
-    private async void Filter(object sender, SelectionChangedEventArgs e) { if (IsLoaded) await Update(); }
+    private async void Filter(object sender, SelectionChangedEventArgs e) { if (IsLoaded && !updatingTools) await Update(); }
     private async void Refresh(object sender, RoutedEventArgs e) => await Update();
-    private async Task Update()
+    private Task Update()
     {
-        if (querying) { refreshPending = true; return; }
+        if (workspace.Stopping) return Task.CompletedTask;
+        if (querying) { refreshPending = true; return pendingQuery; }
         querying = true;
-        var request = ++revision;
-        var until = DateTimeOffset.UtcNow;
-        var since = until - (TimeRange.SelectedIndex switch { 0 => TimeSpan.FromMinutes(15), 2 => TimeSpan.FromDays(1), 3 => TimeSpan.FromDays(7), _ => TimeSpan.FromHours(1) });
-        var project = scope is null ? (ProjectFilter.SelectedItem as ProjectChoice)?.Id : scope.RegistrationId?.ToString() ?? "unregistered";
-        var tool = ToolFilter.SelectedIndex == 0 ? null : ((ComboBoxItem)ToolFilter.SelectedItem).Content.ToString();
-        EvidenceKind? evidence = EvidenceFilter.SelectedIndex switch { 1 => EvidenceKind.Context, 2 => EvidenceKind.Shared, 3 => EvidenceKind.Unknown, _ => null };
-        var bucketSeconds = TimeRange.SelectedIndex >= 2 ? 3600 : 60;
-        var sessions = workspace.Sessions.All; var projects = workspace.Projects.ToArray();
-        var root = scope?.Root;
-        Coverage.Text = "正在查询有界历史…";
+        return pendingQuery = UpdateQueries();
+    }
+    private async Task UpdateQueries()
+    {
         try
         {
+            do
+            {
+                refreshPending = false;
+                await Query();
+            } while (refreshPending && !workspace.Stopping && IsVisible);
+        }
+        finally { querying = false; refreshPending = false; }
+    }
+    public void CancelPendingOperations() { revision++; refreshPending = false; }
+    public async Task WaitForPendingOperationsAsync()
+    {
+        // Await the whole query/refresh loop, including Indexed requests outside ShowProject.
+        while (!pendingQuery.IsCompleted) await pendingQuery;
+    }
+    private async Task Query()
+    {
+        if (workspace.Stopping) return;
+        var request = ++revision;
+        try
+        {
+            RefreshToolChoices();
+            var until = DateTimeOffset.UtcNow;
+            var since = until - (TimeRange.SelectedIndex switch { 0 => TimeSpan.FromMinutes(15), 2 => TimeSpan.FromDays(1), 3 => TimeSpan.FromDays(7), _ => TimeSpan.FromHours(1) });
+            var project = scope is null ? (ProjectFilter.SelectedItem as ProjectChoice)?.Id : scope.RegistrationId is Guid id ? workspace.CurrentObservationKey(id) ?? "removed" : "unregistered";
+            var tool = ToolFilter.SelectedIndex == 0 ? null : ((ComboBoxItem)ToolFilter.SelectedItem).Content.ToString();
+            EvidenceKind? evidence = EvidenceFilter.SelectedIndex switch { 1 => EvidenceKind.Context, 2 => EvidenceKind.Shared, 3 => EvidenceKind.Unknown, _ => null };
+            var bucketSeconds = TimeRange.SelectedIndex >= 2 ? 3600 : 60;
+            var sessions = workspace.Sessions.All; var projects = workspace.Projects.ToArray();
+            var root = scope?.Root;
+            Coverage.Text = "正在查询有界历史…";
             var result = await Task.Run(() =>
             {
                 var changes = workspace.Store.Changes(since, 10000, project, root);
                 return TimelineQuery.Build(changes, sessions, workspace.Store.Gaps(since, project), since, until, workspace.Store.EarliestHistory(project, root),
                     project, tool, evidence, bucketSeconds: bucketSeconds, inputTruncated: changes.Count == 10000);
             });
-            if (request != revision || !IsVisible) return;
+            if (workspace.Stopping || request != revision || !IsVisible) return;
             Nodes.ItemsSource = result.Nodes; Graph.Load(result, projects, sessions, since, until);
             selected = null; Details.Text = result.Nodes.Count == 0 ? "所选时段没有观察到变化。请检查项目是否已登记、暂停或调整时间范围；离线历史不会自动补齐。" : "选择一个变化节点，查看依据和涉及文件。";
             Coverage.Text = $"{result.Nodes.Count} 个聚合节点；{result.Gaps.Count} 条覆盖缺口；最早保留 {result.EarliestAvailable.ToLocalTime():MM-dd HH:mm}。" +
@@ -69,12 +100,7 @@ public partial class TimelineView : UserControl
                 (result.Gaps.Count > 0 ? " 最近缺口：" + result.Gaps[0].Reason : "");
             if (scope is { RegistrationId: null }) Coverage.Text = "此项目尚未登记监测，没有已记录的文件开发线；加入监测后开始记录。已有工具会话请查看“项目会话”，不会补造离线文件历史。";
         }
-        catch (Exception error) { if (request == revision) Coverage.Text = "历史查询失败：" + error.Message; }
-        finally
-        {
-            querying = false;
-            if (refreshPending) { refreshPending = false; if (IsVisible) await Update(); }
-        }
+        catch (Exception error) { if (!workspace.Stopping && request == revision) Coverage.Text = "历史查询失败：" + error.Message; }
     }
     private void SelectNode(object sender, SelectionChangedEventArgs e) { if (Nodes.SelectedItem is TimelineNode node) Show(node); }
     private void Show(TimelineNode node)
@@ -86,8 +112,26 @@ public partial class TimelineView : UserControl
     }
     private void OpenFiles(object sender, RoutedEventArgs e)
     {
+        if (workspace.Stopping) return;
         if (selected is null) { Details.Text = "请先选择变化节点。"; return; }
         CurrentDirectoryRequested?.Invoke(selected.Directory);
+    }
+    private void RefreshToolChoices()
+    {
+        if (workspace.Stopping) return;
+        var selected = (ToolFilter.SelectedItem as ComboBoxItem)?.Tag as string;
+        var labels = KnownTools.RegistrationLabels.Concat(workspace.Projects.Select(p => p.Tool))
+            .Concat(workspace.Sessions.All.Select(s => s.Tool)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (ToolFilter.Items.Count == labels.Length + 1 && ToolFilter.Items.Cast<ComboBoxItem>().Skip(1).Select(i => (string)i.Tag).SequenceEqual(labels)) return;
+        updatingTools = true;
+        try
+        {
+            ToolFilter.Items.Clear();
+            ToolFilter.Items.Add(new ComboBoxItem { Content = "全部工具" });
+            foreach (var label in labels) ToolFilter.Items.Add(new ComboBoxItem { Content = label, Tag = label });
+            ToolFilter.SelectedItem = ToolFilter.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string?)i.Tag == selected) ?? ToolFilter.Items[0];
+        }
+        finally { updatingTools = false; }
     }
     private sealed record ProjectChoice(string? Id, string Name);
 }

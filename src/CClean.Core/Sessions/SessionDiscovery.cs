@@ -98,11 +98,12 @@ public sealed class SessionDiscovery : IDisposable
         var rows = cache.Values.Where(v => v.Session is not null).Select(v => v.Session!)
             .GroupBy(s => (s.Tool, s.Id)).Select(g => g.OrderByDescending(s => s.Updated).First())
             .OrderByDescending(s => s.Updated).ToArray();
-        return new(rows, more, skipped, $"{(more ? "分批发现中" : "本轮发现完成")} · {rows.Length} 个会话 · 跳过 / 不支持 {skipped} 项。最多缓存 2,000 个文件；ZCode 尚无已验证元数据适配。运行状态未知，不能据此判断可删除。");
+        return new(rows, more, skipped, $"{(more ? "分批发现中" : "本轮发现完成")} · {rows.Length} 个会话 · 跳过 / 不支持 {skipped} 项。最多缓存 2,000 个文件；仅支持 Codex / Claude Code 已验证的 JSONL 元数据，其他工具可手动登记。运行状态未知，不能据此判断可删除。");
     }
 
     public static DiscoveredSession? ReadMetadata(string path, string tool, CancellationToken cancellation = default)
     {
+        if (tool is not ("Codex" or "Claude Code")) return null;
         using var lease = new DirectoryLease(Path.GetDirectoryName(path)!);
         if ((File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Offline)) != 0) return null;
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);

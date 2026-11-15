@@ -1,6 +1,13 @@
+using System.Runtime.ExceptionServices;
+using System.Diagnostics;
 using System.Threading.Channels;
+using System.Collections.Immutable;
 
 namespace CClean.Core.Monitoring;
+
+public sealed record DirectoryNotification(long Sequence, DateTimeOffset Time, WatcherChangeTypes Kind, string Path, string? OldPath);
+public sealed record DirectoryObservation(Guid Id, string Root, long Sequence, long DroppedThrough, long ScanGaps,
+    bool Reliable, IReadOnlyList<DirectoryNotification> Events);
 
 public sealed class DirectoryMonitor : IDisposable
 {
@@ -11,10 +18,52 @@ public sealed class DirectoryMonitor : IDisposable
     private readonly string root;
     private readonly bool absolutePaths;
     private readonly object sync = new();
+    // Coordinates only our own snapshot reader and approved deletion; it is not a filesystem lock.
+    internal object ScanGate { get; } = new();
+    private bool researchScanDeferred;
+    private TaskCompletionSource? researchScanCompletion;
+    internal Task ResearchScanCompleted => Volatile.Read(ref researchScanCompletion)?.Task ?? Task.CompletedTask;
+    // Caller enters ScanGate before changing the scan schedule; only isolated research uses this.
+    internal void BeginResearchScanDeferral()
+    {
+        if (!Monitor.IsEntered(ScanGate) || researchScanDeferred ||
+            researchScanCompletion is { Task.IsCompleted: false } || Volatile.Read(ref disposed) != 0)
+            throw new InvalidOperationException("Research scan lease unavailable.");
+        researchScanDeferred = true;
+        researchScanCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+    internal void EndResearchScanDeferral()
+    {
+        lock (ScanGate)
+        {
+            if (!researchScanDeferred) throw new InvalidOperationException("Research scan lease was not held.");
+            researchScanDeferred = false;
+            if (Volatile.Read(ref disposed) == 0) Hint();
+        }
+    }
     private DirectorySnapshot snapshot = new(new Dictionary<string, Files.FileSnapshot>(), ["Initial scan pending"], DateTimeOffset.MinValue);
     private long applicationGaps, nativeGaps, scanGaps, watcherErrors, revision;
+    private long scanTicks;
+    internal TimeSpan ScanTime => TimeSpan.FromSeconds((double)Interlocked.Read(ref scanTicks) / Stopwatch.Frequency);
     private int disposed;
     private long lastActivityTicks;
+    private readonly Guid observationId = Guid.NewGuid();
+    private ImmutableList<DirectoryNotification> notifications = ImmutableList<DirectoryNotification>.Empty;
+    private readonly object notificationSync = new();
+    private long notificationSequence, droppedThrough;
+    private int notificationCharacters;
+    // Bounded evidence, independent of the coalesced scan hints. Lost history never grants permission.
+    public DirectoryObservation Observe()
+    {
+        lock (notificationSync)
+            return new(observationId, root, notificationSequence, droppedThrough, ScanGaps, HasContinuousObservation, notifications);
+    }
+    public bool IsObservationCurrent(DirectoryObservation observation)
+    {
+        lock (notificationSync)
+            return observation.Id == observationId && observation.Sequence == notificationSequence &&
+                observation.ScanGaps == ScanGaps && HasContinuousObservation;
+    }
     public DateTimeOffset? LastActivity => Interlocked.Read(ref lastActivityTicks) is var ticks && ticks != 0 ? new DateTimeOffset(ticks, TimeSpan.Zero) : null;
     public long ApplicationGaps => Interlocked.Read(ref applicationGaps);
     public long NativeGaps => Interlocked.Read(ref nativeGaps);
@@ -43,9 +92,28 @@ public sealed class DirectoryMonitor : IDisposable
         watcher = new FileSystemWatcher(this.root)
         {
             IncludeSubdirectories = true, InternalBufferSize = 4096,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite | NotifyFilters.Attributes
         };
-        void Changed(object sender, FileSystemEventArgs args) { Interlocked.Exchange(ref lastActivityTicks, DateTimeOffset.UtcNow.Ticks); beforeNotification?.Invoke(); Hint(); }
+        void Changed(object sender, FileSystemEventArgs args)
+        {
+            lock (notificationSync)
+            {
+                var time = DateTimeOffset.UtcNow;
+                Interlocked.Exchange(ref lastActivityTicks, time.Ticks);
+                var entry = new DirectoryNotification(++notificationSequence, time, args.ChangeType, args.FullPath,
+                    (args as RenamedEventArgs)?.OldFullPath);
+                // Observations share immutable history; later notifications never rewrite an earlier baseline.
+                notifications = notifications.Add(entry);
+                notificationCharacters += entry.Path.Length + (entry.OldPath?.Length ?? 0);
+                while (notifications.Count > 2048 || notificationCharacters > 262144)
+                {
+                    var removed = notifications[0];
+                    notifications = notifications.RemoveAt(0); droppedThrough = removed.Sequence;
+                    notificationCharacters -= removed.Path.Length + (removed.OldPath?.Length ?? 0);
+                }
+            }
+            beforeNotification?.Invoke(); Hint();
+        }
         watcher.Created += Changed;
         watcher.Changed += Changed;
         watcher.Deleted += Changed;
@@ -85,11 +153,27 @@ public sealed class DirectoryMonitor : IDisposable
                 while (hints.Reader.TryRead(out _)) { }
                 await Task.Delay(100, stop.Token);
                 stop.Token.ThrowIfCancellationRequested();
-                BeforeScan?.Invoke();
-                var next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files, absolutePaths: absolutePaths);
-                if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
-                lock (sync) snapshot = next;
-                Interlocked.Increment(ref revision);
+                while (hints.Reader.TryRead(out _)) { }
+                lock (ScanGate)
+                {
+                    if (researchScanDeferred) continue;
+                    long sequenceAtStart;
+                    lock (notificationSync) sequenceAtStart = notificationSequence;
+                    BeforeScan?.Invoke();
+                    var started = Stopwatch.GetTimestamp();
+                    DirectorySnapshot next;
+                    try { next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files, absolutePaths: absolutePaths); }
+                    finally
+                    {
+                        Interlocked.Add(ref scanTicks, Stopwatch.GetTimestamp() - started);
+                    }
+                    if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
+                    lock (sync) snapshot = next;
+                    Interlocked.Increment(ref revision);
+                    lock (notificationSync)
+                        if (notificationSequence == sequenceAtStart && !hints.Reader.TryPeek(out _))
+                            researchScanCompletion?.TrySetResult();
+                }
             }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
@@ -100,6 +184,7 @@ public sealed class DirectoryMonitor : IDisposable
                 snapshot = snapshot with { Gaps = new[] { "采集已停止：" + error.Message }.Concat(snapshot.Gaps).Take(1000).ToArray() };
             // Publish the failure to the existing persistence/status loop and leave collection stopped.
             Interlocked.Increment(ref revision);
+            researchScanCompletion?.TrySetResult();
         }
     }
 
@@ -107,12 +192,19 @@ public sealed class DirectoryMonitor : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-        try
+        var failures = new List<Exception>();
+        void Finish(Action action)
         {
-            watcher.Dispose();
-            stop.Cancel();
-            worker.GetAwaiter().GetResult();
+            try { action(); }
+            catch (Exception error) { failures.Add(error); }
         }
-        finally { stop.Dispose(); }
+        // Every stage runs even when an earlier one fails; the worker must finish before its CTS is released.
+        Finish(watcher.Dispose);
+        Finish(stop.Cancel);
+        Finish(() => worker.GetAwaiter().GetResult());
+        researchScanCompletion?.TrySetCanceled();
+        Finish(stop.Dispose);
+        if (failures.Count == 1) ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        if (failures.Count > 1) throw new AggregateException("停止目录观察时发生多个错误。", failures);
     }
 }

@@ -41,6 +41,146 @@ public class LocalStoreTests
     private static extern bool CreateHardLinkW(string link, string target, IntPtr security);
 
     [Fact]
+    public void CurrentObservationKeysExcludeRemovedAndReplacedScopesWithoutLosingHistory()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-current-totals-" + Guid.NewGuid().ToString("N")));
+        using var store = new LocalStore(Path.Combine(box.RunDirectory, "data"));
+        var path = box.CreateFixture("current.bin", 100);
+        var alias = Path.Combine(box.RunDirectory, "alias.bin");
+        Assert.True(CreateHardLinkW(alias, path, IntPtr.Zero));
+        var removed = box.CreateFixture("removed.bin", 200);
+        void Save(string key, Core.Files.FileSnapshot file) => Assert.True(store.SaveSnapshot(key,
+            new DirectorySnapshot(new Dictionary<string, Core.Files.FileSnapshot> { [file.Path] = file }, [], DateTimeOffset.UtcNow), store.LoadSnapshots(key)));
+        Save("a", Core.Files.WindowsFileMetadata.Read(path));
+        Save("b", Core.Files.WindowsFileMetadata.Read(alias));
+        Save("removed", Core.Files.WindowsFileMetadata.Read(removed));
+        var current = store.CurrentTotals(path, ["a", "b"]);
+        Assert.Equal(100, current.Logical);
+        Assert.Equal(2, current.Files);
+        Assert.Equal(0, current.Growth);
+        Assert.Equal(300, store.Totals(path).Logical);
+        Assert.Equal(2, store.QueryFiles(observationKeys: ["a", "b"]).Count);
+        Assert.Empty(store.QueryFiles(observationKeys: []));
+        Assert.Equal(new StoreTotals(0, 0, 0, 0, 0), store.CurrentTotals(path, []));
+        File.WriteAllBytes(path, new byte[120]);
+        Save("a@2", Core.Files.WindowsFileMetadata.Read(path));
+        var revised = store.CurrentTotals(path, ["a@2"]);
+        Assert.Equal(120, revised.Logical);
+        Assert.Equal(20, revised.Growth);
+        Assert.Single(store.QueryFiles(observationKeys: ["a@2"]));
+        Assert.Contains(store.Changes(DateTimeOffset.MinValue), c => c.ProjectId == "removed");
+        Assert.Single(store.LoadSnapshots("a"));
+    }
+
+    [Fact]
+    public void InventorySummariesRestartAsBoundedStaleDisplayDataWithNoApproval()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-inventory-summary-" + Guid.NewGuid().ToString("N")));
+        var data = Path.Combine(box.RunDirectory, "data");
+        var captured = DateTimeOffset.UtcNow;
+        var folders = Enumerable.Range(0, LocalStore.MaximumSummaryRows + 5).Select(i =>
+        {
+            var path = Path.Combine(box.RunDirectory, "folder-" + i);
+            return new SpaceFolder(path, i, 1, false, "synthetic", "")
+            { Explanation = ContentClassification.Describe(path, decision: new(true, "synthetic", "must not persist")) };
+        }).ToArray();
+        var result = new SpaceSurveyResult(folders, 205, 500, 1, true, false)
+        {
+            Root = box.RunDirectory, CapturedAt = captured, KnownAllocatedBytes = 4096,
+            KnownUniqueLogicalBytes = 200, UnknownAllocationObjects = 2, DuplicatePaths = 1
+        };
+        using (var store = new LocalStore(data)) Assert.True(store.SaveInventorySummary(box.RunDirectory, 3, result));
+        using var reopened = new LocalStore(data);
+        var summary = Assert.IsType<InventorySummary>(reopened.LoadInventorySummary(box.RunDirectory, 3));
+        Assert.True(summary.IsStale);
+        Assert.Equal(captured, summary.CapturedAt);
+        Assert.True(summary.FoldersTruncated);
+        Assert.Equal(LocalStore.MaximumSummaryRows, summary.Folders.Count);
+        Assert.Equal(4096, summary.KnownAllocatedBytes);
+        Assert.Null(reopened.LoadInventorySummary(box.RunDirectory, 4));
+        Assert.Null(reopened.LoadInventorySummary(Path.Combine(box.RunDirectory, "other"), 3));
+        var display = summary.ToSurveyResult();
+        Assert.True(display.IsStale);
+        Assert.False(display.AllocationComplete);
+        Assert.All(display.Folders, f => Assert.Null(f.Explanation.Decision));
+        Assert.Throws<ArgumentException>(() => reopened.SaveInventorySummary(box.RunDirectory, 3, display));
+        using var db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(data, "index.db"), Pooling = false }.ToString());
+        db.Open(); using var command = db.CreateCommand(); command.CommandText = "SELECT payload FROM inventory_summaries";
+        var json = Assert.IsType<string>(command.ExecuteScalar());
+        Assert.DoesNotContain("Eligible", json);
+        Assert.DoesNotContain("Decision", json);
+        Assert.DoesNotContain("must not persist", json);
+        Assert.Empty(reopened.QueryFiles());
+    }
+
+    [Fact]
+    public void LatestSummaryKeepsTheSavedRootAndScopeRevisionAndSkipsDamagedPayloads()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-latest-summary-" + Guid.NewGuid().ToString("N")));
+        var data = Path.Combine(box.RunDirectory, "data");
+        using var store = new LocalStore(data);
+        Assert.Null(store.LoadLatestInventorySummary());
+        var captured = DateTimeOffset.UtcNow;
+        var first = Path.Combine(box.RunDirectory, "first");
+        var latest = Path.Combine(box.RunDirectory, "latest");
+        var damaged = Path.Combine(box.RunDirectory, "damaged");
+        var result = new SpaceSurveyResult([], 0, 0, 0, false, false) { Root = first, CapturedAt = captured };
+        Assert.True(store.SaveInventorySummary(first, 1, result));
+        Assert.True(store.SaveInventorySummary(latest, 4, result with { Root = latest, CapturedAt = captured.AddSeconds(1) }));
+        Assert.True(store.SaveInventorySummary(damaged, 1, result with { Root = damaged, CapturedAt = captured.AddSeconds(2) }));
+        using var db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(data, "index.db"), Pooling = false }.ToString());
+        db.Open(); using var corrupt = db.CreateCommand();
+        corrupt.CommandText = "UPDATE inventory_summaries SET payload='damaged' WHERE root=$root";
+        corrupt.Parameters.AddWithValue("$root", damaged); corrupt.ExecuteNonQuery();
+        var restored = Assert.IsType<InventorySummary>(store.LoadLatestInventorySummary());
+        Assert.Equal(latest, restored.Root);
+        Assert.Equal(4, restored.ScopeRevision);
+        Assert.True(restored.IsStale);
+        Assert.True(restored.ToSurveyResult().IsStale);
+    }
+
+    [Fact]
+    public void SummarySaveFailureAndOversizeDoNotOverwritePreviousSnapshot()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-summary-rollback-" + Guid.NewGuid().ToString("N")));
+        var data = Path.Combine(box.RunDirectory, "data");
+        using var store = new LocalStore(data);
+        var initial = new SpaceSurveyResult([], 1, 10, 0, false, false) { Root = box.RunDirectory, CapturedAt = DateTimeOffset.UtcNow };
+        Assert.True(store.SaveInventorySummary(box.RunDirectory, 1, initial));
+        using var db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(data, "index.db"), Pooling = false }.ToString());
+        db.Open(); using var trigger = db.CreateCommand();
+        trigger.CommandText = "CREATE TRIGGER refuse_summary BEFORE UPDATE ON inventory_summaries BEGIN SELECT RAISE(ABORT,'controlled summary write failure'); END";
+        trigger.ExecuteNonQuery();
+        Assert.Throws<SqliteException>(() => store.SaveInventorySummary(box.RunDirectory, 1, initial with { Bytes = 20 }));
+        Assert.Equal(10, store.LoadInventorySummary(box.RunDirectory, 1)!.LogicalBytes);
+        var huge = new SpaceFolder(box.RunDirectory, 10, 1, false, "", new string('x', LocalStore.MaximumSummaryBytes));
+        Assert.Throws<IOException>(() => store.SaveInventorySummary(box.RunDirectory, 1, initial with { Folders = [huge] }));
+        Assert.Equal(10, store.LoadInventorySummary(box.RunDirectory, 1)!.LogicalBytes);
+    }
+
+    [Fact]
+    public void DiscoverySummariesHaveBoundedRootsAndGlobalRetention()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-discovery-summary-" + Guid.NewGuid().ToString("N")));
+        using var store = new LocalStore(Path.Combine(box.RunDirectory, "data"));
+        var first = Path.Combine(box.RunDirectory, "scope-0");
+        for (var i = 0; i <= LocalStore.MaximumSummaries; i++)
+        {
+            var root = Path.Combine(box.RunDirectory, "scope-" + i);
+            var roots = Enumerable.Range(0, LocalStore.MaximumSummaryRows + 1).Select(n => Path.Combine(root, "project-" + n)).ToArray();
+            Assert.True(store.SaveDiscoverySummary(root, 1, new Core.Projects.ProjectDiscoveryResult(roots, 250, 2, true, false)));
+        }
+        Assert.Null(store.LoadDiscoverySummary(first, 1));
+        var last = Path.Combine(box.RunDirectory, "scope-" + LocalStore.MaximumSummaries);
+        var summary = Assert.IsType<DiscoverySummary>(store.LoadDiscoverySummary(last, 1));
+        Assert.True(summary.IsStale);
+        Assert.True(summary.RootsTruncated);
+        Assert.Equal(LocalStore.MaximumSummaryRows, summary.Roots.Count);
+        Assert.Equal(250, summary.ToDiscoveryResult().Inspected);
+        Assert.True(summary.ToDiscoveryResult().HasMore);
+    }
+
+    [Fact]
     public void SamePathReplacementUsesNewIdentityBaseline()
     {
         using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-replacement-" + Guid.NewGuid().ToString("N")));

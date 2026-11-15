@@ -35,4 +35,4 @@ if (!$fullOutput.StartsWith($artifactRoot+[IO.Path]::DirectorySeparatorChar,[Str
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($fullOutput)) | Out-Null
 $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $fullOutput -Encoding utf8
 $report | Select-Object DurationSeconds,MachineCpuPercent,PeakSampleWorkingSet,PeakSampleDataBytes,CpuPassed,MemoryPassed
-if (!$report.CpuPassed -or !$report.MemoryPassed) { exit 1 }
+if (!$report.CpuPassed -or !$report.MemoryPassed -or $env:CCLEAN_UI_PROBE_FORCE_IDLE_FAILURE -eq '1') { exit 1 }

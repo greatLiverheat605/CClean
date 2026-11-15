@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using CClean.Core.Cleanup;
 using CClean.Core.Experiments;
+using CClean.Core.Monitoring;
 
 namespace CClean.Poc;
 
 internal static class RecoveryProbe
 {
-    public static void Child(ExperimentSandbox box, string sample, string checkpoint)
+    public static void Child(ExperimentSandbox box, string sample, string checkpoint, bool segmented = false)
     {
         sample = ExperimentSandbox.Normalize(sample);
         if (!sample.Equals(Path.GetDirectoryName(box.Root), StringComparison.OrdinalIgnoreCase)) throw new ExperimentRefusedException("Crash sample must own child sandbox.", 3);
@@ -14,14 +15,23 @@ internal static class RecoveryProbe
         using var lease = new DirectoryLease(sample);
         var root = Path.Combine(sample, "cache"); var data = Path.Combine(sample, "audit");
         var context = new CleanupContext(1, [new(root, CacheRule.NpmContent.Id, 1, "11.19.0", true, true)], new(1, [new(root, false, true, "owned crash fixture")]), [data]);
-        var plan = CleanupPlanner.Preview(new[] { "a", "b" }.Select(n => Path.Combine(root, "_cacache", "content-v2", n)), context);
+        using var monitor = segmented ? new DirectoryMonitor(root, absolutePaths: true) : null;
+        if (monitor is not null && !SpinWait.SpinUntil(() => monitor.HasContinuousObservation, TimeSpan.FromSeconds(10)))
+            throw new IOException("Research watcher baseline unavailable.");
+        CleanupContext Current() => monitor is null ? context : context with
+        {
+            Contract = CleanupContract.SegmentReviewResearch, IndependentActivity = context.Activity,
+            Observations = [new(monitor, monitor.Observe())]
+        };
+        var paths = new[] { "a", "b" }.Select(n => Path.Combine(root, "_cacache", "content-v2", n));
+        var plan = segmented ? CleanupPlanner.PreviewSegmentResearch(paths, Current()) : CleanupPlanner.Preview(paths, context);
         if (plan.EligibleCount != 2) throw new InvalidOperationException("Crash fixture was not eligible.");
         using var journal = new CleanupJournal(data);
-        new CleanupExecutor(journal) { TestCheckpoint = point => { if (point == checkpoint) Environment.Exit(73); } }
-            .ExecuteApproved(plan, () => Task.FromResult(context)).GetAwaiter().GetResult();
+        new CleanupExecutor(journal) { AllowSegmentResearch = segmented, TestCheckpoint = point => { if (point == checkpoint) Environment.Exit(73); } }
+            .ExecuteApproved(plan, () => Task.FromResult(Current())).GetAwaiter().GetResult();
         throw new InvalidOperationException("Crash checkpoint was not reached.");
     }
-    public static void Run(ExperimentSandbox box, List<object> checks)
+    public static void Run(ExperimentSandbox box, List<object> checks, bool segmented = false)
     {
         foreach (var checkpoint in new[] { "before-delete", "after-delete", "after-result" })
         {
@@ -29,7 +39,7 @@ internal static class RecoveryProbe
             foreach (var name in new[] { "a", "b" }) { var path = Path.Combine(cache, name); File.WriteAllText(path, "owned crash fixture", System.Text.Encoding.UTF8); File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddHours(-1)); }
             var info = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
             if (string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "dotnet", StringComparison.OrdinalIgnoreCase)) info.ArgumentList.Add(typeof(RecoveryProbe).Assembly.Location);
-            foreach (var arg in new[] { "--case", "cleanup-crash-child", "--sandbox", Path.Combine(root, "child-sandbox"), "--sample-root", root, "--checkpoint", checkpoint, "--output", "artifacts/cleanup-crash-child.json" }) info.ArgumentList.Add(arg);
+            foreach (var arg in new[] { "--case", segmented ? "segment-crash-child" : "cleanup-crash-child", "--sandbox", Path.Combine(root, "child-sandbox"), "--sample-root", root, "--checkpoint", checkpoint, "--output", "artifacts/cleanup-crash-child.json" }) info.ArgumentList.Add(arg);
             using var child = Process.Start(info)!;
             var stdout = child.StandardOutput.ReadToEndAsync(); var stderr = child.StandardError.ReadToEndAsync();
             if (!child.WaitForExit(60000)) { child.Kill(true); throw new IOException("Owned crash child timed out."); }
@@ -41,7 +51,7 @@ internal static class RecoveryProbe
             if (firstExists != (checkpoint == "before-delete")) throw new InvalidOperationException("Unexpected crash boundary result.");
             var observed = CleanupRecovery.Inspect(journal, run.Id);
             if (checkpoint == "after-delete" && observed[0].State != "RecoveryObservation") throw new InvalidOperationException("Invented committed deletion.");
-            checks.Add(new { name = checkpoint, status = "passed", childExitCode = child.ExitCode, firstExists, nextObjectPreserved = true, state = run.State, recovery = observed.Select(o => o.State).ToArray() });
+            checks.Add(new { name = checkpoint, status = "passed", segmented, childExitCode = child.ExitCode, firstExists, nextObjectPreserved = true, state = run.State, recovery = observed.Select(o => o.State).ToArray() });
         }
     }
 }

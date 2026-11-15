@@ -9,12 +9,12 @@
     <CheckBox x:Name="Enabled" Content="启用 npm 11.19.0 规则（请确认实际工具版本）" Margin="0,8" Foreground="{DynamicResource Ink}"/>
     <Button Content="保存此根规则" Click="SaveRule" HorizontalAlignment="Left"/>
    </StackPanel></Expander>
-   <WrapPanel><Button x:Name="PreviewRulesButton" Content="预览已启用规则" Click="PreviewRules"/><Button x:Name="DumpPreviewButton" Content="预览旧崩溃转储" Click="PreviewDumps"/><Button Content="取消预览" Click="CancelPreview"/></WrapPanel>
+   <WrapPanel><Button x:Name="PreviewRulesButton" Content="预览已启用规则" Click="PreviewRules"/><Button x:Name="DumpPreviewButton" Content="预览旧崩溃转储" Click="PreviewDumps"/><Button x:Name="CancelPreviewButton" Content="取消预览" Click="CancelPreview"/></WrapPanel>
   </StackPanel>
   <TextBlock x:Name="Summary" Grid.Row="1" Text="从文件列表选择对象，或预览已启用规则；当前不会执行删除。" Margin="0,0,0,12"/>
   <DataGrid Grid.Row="2" x:Name="Items" SelectionMode="Single"><DataGrid.Columns>
    <DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="*"/><DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="110"/><DataGridTextColumn Header="分配估算" Binding="{Binding Estimate}" Width="100"/><DataGridTextColumn Header="依据与排除原因" Binding="{Binding Reason}" Width="300"/>
   </DataGrid.Columns></DataGrid>
-  <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBlock x:Name="Details" Text="清单绑定当前文件身份、流、规则与活动状态，有效期 5 分钟。新增文件不会自动加入。"/><WrapPanel><Button x:Name="ExecuteButton" Content="永久删除候选文件…" IsEnabled="False" Click="Execute"/><Button Content="停止后续清理" Click="StopExecution"/></WrapPanel></StackPanel>
+  <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBlock x:Name="Details" Text="清单绑定当前文件身份、流、规则与活动状态，有效期 5 分钟。新增文件不会自动加入。"/><WrapPanel><Button x:Name="ExecuteButton" Content="永久删除候选文件…" IsEnabled="False" Click="Execute"/><Button x:Name="StopExecutionButton" Content="停止后续清理" Click="StopExecution"/></WrapPanel></StackPanel>
  </Grid>
 </UserControl>

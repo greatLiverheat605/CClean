@@ -1,0 +1,1193 @@
+{
+  "schemaVersion": 1,
+  "planId": "CCLEAN-20261023-R1",
+  "title": "CClean 首批重做：分类工作台与可信清理",
+  "createdAt": "2026-10-23",
+  "updatedAt": "2026-11-05",
+  "status": "in_progress",
+  "scopeStatus": "confirmed",
+  "scopeDecision": "D-12",
+  "implementationStatus": "in_progress",
+  "currentTaskId": "R1-003",
+  "sourceCommit": "7d63047fefb10645181c3e69c0479a940bbe50fa",
+  "sourcePlan": "2026-10-23_cclean-first-release.md",
+  "pageSpec": "2026-10-23_cclean-first-release/page-spec.md",
+  "requiredTaskCount": 12,
+  "optionalTaskCount": 0,
+  "legacy": {
+    "taskBoard": ".codex/plans/current/2026-09-17_cclean-development.tasks.json",
+    "sha256AtPlanning": "616e70ff601e231793092ead029ea3d2b486a6a2d062b8f8e577ddfdecb359b8",
+    "taskCount": 28,
+    "statusPolicy": "旧任务状态按原证据保留，新任务完成不自动关闭旧验收。"
+  },
+  "sync": {
+    "provider": "task-mcp",
+    "status": "pending_unavailable",
+    "remotePlanId": null,
+    "lastSyncedAt": null,
+    "missingTools": [
+      "plan_task",
+      "analyze_task",
+      "reflect_task",
+      "split_tasks",
+      "search_nodes"
+    ],
+    "retryPolicy": "工具恢复后先查找本计划/任务，以稳定 ID 追加或更新；不清空既有任务，不虚构远端 ID。"
+  },
+  "taskStatusContract": {
+    "pending": "尚未开始实施；规划文档完成不能把产品任务标为通过。",
+    "in_progress": "正在实施。",
+    "passed": "本任务全部完成条件有实际证据。",
+    "pending_validation": "已有实现，仍有必需业务、用户或环境验收缺项。",
+    "failed": "已验证但不符合完成条件。",
+    "blocked": "外部前提缺失，具体原因与可继续工作记录在证据中。"
+  },
+  "verification": {
+    "commands": [
+      "dotnet build CClean.slnx -c Release --nologo",
+      "dotnet test tests/CClean.Tests -c Release --list-tests",
+      "dotnet test tests/CClean.Tests -c Release --no-build --filter Category=MvpP0",
+      "dotnet test tests/CClean.Tests -c Release --no-build --filter Category=CleanupWorkflow"
+    ],
+    "commandPolicy": "实施时按变更选择必要检查；CleanupWorkflow 尚待创建，必须先确认选中的用例数大于 0。真实 UI、消费者重建和用户操作不能由单测代替。",
+    "longRun": {
+      "seconds": 259200,
+      "intervalSeconds": 30,
+      "maximumUnexplainedGapSeconds": 90,
+      "status": "not_run",
+      "assessmentPolicy": "72 小时同版连续证据；采样退出 0 不等于验收通过，独立评估并保留 600 秒空闲验收。"
+    }
+  },
+  "tasks": [
+    {
+      "id": "R1-001",
+      "name": "用途分类、解释与工具能力",
+      "priority": "P0",
+      "status": "passed",
+      "optional": false,
+      "workPackages": [
+        "P1"
+      ],
+      "dependencies": [],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-01",
+        "A-09"
+      ],
+      "description": "纠正 GeneratedNames 的混合标签，保留其扫描中避免误认项目的作用；为用途、关联证据、影响、重建条件、资格/未知原因建立可复用结果，沿用现有 record 与规则结果，不把 UI 类别直接当白名单。能力表区分安装发现、目录观察、会话元数据与进程证据；同步项目/会话注册校验及工具下拉框，自定义工具只承诺已验证能力。",
+      "implementationGuide": "纠正 GeneratedNames 的混合标签，保留其扫描中避免误认项目的作用；为用途、关联证据、影响、重建条件、资格/未知原因建立可复用结果，沿用现有 record 与规则结果，不把 UI 类别直接当白名单。能力表区分安装发现、目录观察、会话元数据与进程证据；同步项目/会话注册校验及工具下拉框，自定义工具只承诺已验证能力。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Monitoring/SpaceSurvey.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Tools/ToolDefinition.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/ProtectionPolicy.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Sessions/SessionRegistry.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/SpaceSurveyTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/research/tool-compatibility.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "用 `.git/.codex/.cache` 混合根、Claude 会话磁盘、benchmark、G 盘 target 和无规则对象验证说明；没有证据的关联显示未知。分类结果变化不扩大原有执行资格；小型合成分类样例进入现有测试，文案使用页面规格中的三类说明卡。",
+      "legacyReferences": [],
+      "evidence": [
+        "docs/testing/first-release-r1-001.md",
+        "artifacts/first-release-r1-001/r1-001-regression.trx",
+        "artifacts/ui-probe-20261023T092505755/scope-lifecycle.json"
+      ]
+    },
+    {
+      "id": "R1-002",
+      "name": "范围管理、跨盘计量与有界快照",
+      "priority": "P0",
+      "status": "passed",
+      "optional": false,
+      "workPackages": [
+        "P2"
+      ],
+      "dependencies": [
+        "R1-001"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-01",
+        "A-08"
+      ],
+      "description": "增加改名、调整范围、暂停和移除监测；多项目关联共享根而不重复创建 watcher。移除释放该范围观察器，当前登记汇总排除其旧索引，历史仍带原范围版本保留；异步 Start 完成时重验登记存在和修订一致，防止旧任务重新添回 watcher。旧观察证据不得用于新范围；暂停/移除不自动取消已有显式保护。保存失败回滚 UI 与内存状态。盘点范围与持续观察分别管理，沿用重叠/系统路径/数量预算，超限清楚说明。",
+      "implementationGuide": "增加改名、调整范围、暂停和移除监测；多项目关联共享根而不重复创建 watcher。移除释放该范围观察器，当前登记汇总排除其旧索引，历史仍带原范围版本保留；异步 Start 完成时重验登记存在和修订一致，防止旧任务重新添回 watcher。旧观察证据不得用于新范围；暂停/移除不自动取消已有显式保护。保存失败回滚 UI 与内存状态。盘点范围与持续观察分别管理，沿用重叠/系统路径/数量预算，超限清楚说明。\n\n逐卷容量、逻辑量、去重分配、缺口与关联依据一同返回；共享文件与父子根只在可证明的集合内去重。保存有限的发现/盘点摘要、时间、范围版本与完整度，启动先显示过期快照并允许刷新，不自动恢复清理资格或全盘监测。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Projects/ProjectRegistry.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Projects/ProjectCatalog.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Storage/VolumeSpaceReader.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Files/WindowsFileMetadata.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Monitoring/SpaceSurvey.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Storage/LocalStore.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/ProjectSetupView.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "项目/缓存分盘、父子范围、硬链接、路径迁移、磁盘不可用、无权限、保存失败、重启和更改根；通过现有 ProjectCatalog/ProjectDiscovery/SpaceSurvey/LocalStore 测试补充关键集成样例。不能把缺口填成零或把目录逻辑大小报成释放量。",
+      "legacyReferences": [],
+      "evidence": [
+        "docs/testing/first-release-r1-002.md",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-002-scopes.md",
+        "artifacts/first-release-r1-002/r1-002-final-regression.trx",
+        "artifacts/ui-probe-20261023T092505755/scope-lifecycle.json"
+      ]
+    },
+    {
+      "id": "R1-003",
+      "name": "真实观察与批次可行性验证",
+      "priority": "P0",
+      "status": "in_progress",
+      "optional": false,
+      "workPackages": [
+        "P3"
+      ],
+      "dependencies": [],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-07"
+      ],
+      "description": "在独立样本上先测 1,000/1,001/10,000/100,000 规模的枚举/身份读取、清单字节、执行吞吐、实际到期位置、审计/DB/WAL、工作集、取消延迟与预期确认次数；首次对原限制的拒绝也作为结果记录。输出可支持规模、瓶颈与协议选型；小内容元数据样本不能冒充读取 20 GiB 的成本。此出口在规则接入和界面定稿前完成，006 依据结果实现并复测。",
+      "implementationGuide": "在独立样本上先测 1,000/1,001/10,000/100,000 规模的枚举/身份读取、清单字节、执行吞吐、实际到期位置、审计/DB/WAL、工作集、取消延迟与预期确认次数；首次对原限制的拒绝也作为结果记录。输出可支持规模、瓶颈与协议选型；小内容元数据样本不能冒充读取 20 GiB 的成本。此出口在规则接入和界面定稿前完成，006 依据结果实现并复测。\n\n按 D-13 实施显式 ObjectReviewV1 清单；原始通知保留，已落盘的同句柄删除回执对应通知、已绑定父目录元数据通知经剩余对象/规则/消费者复核后可继续，来源保持未确定。已知消费者/新建/文件写入/重命名/无回执删除/缺口故障/配置范围变化停止；禁止关闭 watcher 或将其宣称为唯一归因证明。严格契约默认入口保留，新契约仅隔离验证，规则分别验收。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Monitoring/DirectoryMonitor.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupExecutor.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupJournal.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupRecovery.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.Poc/Program.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/MonitoringTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupWorkflowTests.cs",
+          "changeType": "create-if-needed",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tools/CClean.Poc/CleanupBatchProbe.cs",
+          "changeType": "create-if-needed",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCriteria": "第二项前注入外部写入、同路径替换、消费者变化、队列溢出或 watcher 故障，后续对象必须保留。根/文件身份变化、过期、审计失败与重启不续删继续通过；未复现风险也要保留覆盖真实链路的证据，不宣称修复不存在的故障。\n\n给出有证据的批次方案后才记 passed；如需近 100 次重复确认、超过 5 分钟/8 MiB/原资源预算，该方案未通过。优先保持现有有限清单协议；若必须研究一次固定全集、内部分页，须明确完整集合预先持久化、禁止追加及分页审计/恢复，内部翻页不续期。有效期/执行租约变更要单列技术方案与对抗验证，不能隐式加入首批或宣称已经满足。",
+      "legacyReferences": [
+        "DEV-023"
+      ],
+      "evidence": [
+        "docs/testing/2026-10-23-r1-003-feasibility.md",
+        "artifacts/r1-003-tests/r1-003-before.trx",
+        "artifacts/r1-003-tests/r1-003-safety.trx",
+        "artifacts/r1-003-batch-probe-20261023T085302417-e723a4ca7e2d455fb64f1b7e449271f5/result.json",
+        "docs/testing/2026-10-23-r1-003-options.md",
+        "docs/testing/2026-10-23-r1-003-observation-diagnostic.md",
+        "docs/testing/2026-10-23-r1-003-observation-review.md",
+        "artifacts/r1-003-observation-final-20261023T100323137-d1af2536823247adad03061977d6336f/result.json",
+        "docs/testing/2026-10-23-r1-003-next-decision.md",
+        "docs/testing/2026-10-24-r1-003-write-lease.md",
+        "docs/testing/2026-10-24-r1-003-components.md",
+        "docs/testing/2026-10-24-history-pagination.md",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-003-write-lease-components.md",
+        "artifacts/r1-003-write-lease-profiles-20261024T030928821-0a8598929307471fa53bf5959528af46/result.json",
+        "artifacts/r1-003-components-20261024T030540669-ae33c48988a2487bb76d513c88304925/result.json",
+        "artifacts/r1-20261024-tests/r1-20261024-regression.trx",
+        "artifacts/r1-20261024-tests/build-history-layout.log",
+        "artifacts/ui-probe-20261024T032528759/history-paging.json",
+        "artifacts/ui-probe-20261024T032612177/history-desktop.json",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-003-object-contract.md",
+        "docs/testing/2026-10-25-r1-003-object-contract.md",
+        "artifacts/r1-20261025-tests/r1-20261025-regression.trx",
+        "artifacts/ui-probe-20261025T045358118/object-contract.json",
+        "artifacts/r1-20261025-tests/build-final.log",
+        "artifacts/r1-20261025-tests/validation-summary.json",
+        "artifacts/r1-20261025-tests/object-contract-scale.trx",
+        "artifacts/r1-20261025-tests/object-contract-recheck.trx",
+        "artifacts/r1-20261025-tests/object-contract-scan-coordination.trx",
+        "artifacts/r1-20261025-tests/object-contract-streams.trx",
+        "artifacts/r1-20261025-tests/scan-gap-diagnostic.json",
+        "docs/testing/2026-10-25-r1-003-batch-continuity.md",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-003-batch-continuity.md",
+        "artifacts/r1-20261025-continuity/build-final.log",
+        "artifacts/r1-20261025-continuity/regression.trx",
+        "artifacts/r1-20261025-continuity/validation-summary.json",
+        "artifacts/ui-probe-20261025T094339038/object-contract.json",
+        "docs/testing/2026-10-25-r1-workspace-preview-lifecycle.md",
+        "docs/testing/2026-10-25-r1-003-capacity-decision.md",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-003-workspace-lifecycle-capacity.md",
+        "artifacts/r1-20261025-plan-push/build-capacity.log",
+        "artifacts/r1-20261025-plan-push/regression.trx",
+        "artifacts/r1-20261025-plan-push/preview-first-failure.txt",
+        "artifacts/r1-20261025-plan-push/validation-summary.json",
+        "artifacts/ui-probe-20261025T103718569/cleanup-preview-lifecycle.json",
+        "artifacts/ui-probe-20261025T103834201/object-contract.json",
+        "artifacts/ui-probe-20261025T103836057/workspace-shutdown.json",
+        "artifacts/ui-probe-20261025T104046786/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261025T104149389/desktop-blocked.json",
+        "artifacts/r1-20261025-plan-push/capacity-20261025T103834159-b2ed3f534e9c4339bc972b3efd1f2a56/result.json",
+        "artifacts/ui-probe-20261025T104648442/cleanup-preview-lifecycle.json",
+        "artifacts/r1-20261025-plan-push/build-final.log",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-003-segment-research.md",
+        "docs/testing/2026-10-25-r1-003-segment-research.md",
+        "artifacts/r1-20261025-segment-research/validation-summary.json",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-003-throughput.md",
+        "docs/testing/2026-11-04-r1-003-memory-continuity.md",
+        "docs/testing/2026-11-04-r1-003-wpf-gate-followup.md",
+        "artifacts/r1-20261104-next/final-wpf.idle.json",
+        "artifacts/r1-20261104-next/research-scale-final.trx",
+        "artifacts/r1-20261104-next/ten-batch-research-final.trx",
+        "artifacts/r1-20261104-next/regression-research-final.trx",
+        "artifacts/r1-20261104-next/build-final-verified.log",
+        "artifacts/r1-20261104-next/regression-final-verified.trx",
+        "artifacts/r1-20261104-next/lease-race-final.trx",
+        "artifacts/r1-20261104-next/recovery-20261104T105435777-56e11e4eaf674b37a7bc5b0c520aaf27/result.json",
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-014-memory-continuity.md",
+        "artifacts/r1-20261104/optimized-safety.trx",
+        "artifacts/r1-20261104/ten-batch-run.trx",
+        "artifacts/r1-20261104/failed-run-preservation.json",
+        "artifacts/r1-20261104/validation-summary.json",
+        "artifacts/r1-20261104/regression.trx",
+        "artifacts/r1-20261104/ten-batch-optimized.trx",
+        "artifacts/r1-20261104/optimized-run-preservation.json",
+        "artifacts/r1-20261104/segment-crashes-20261104T072448531-4752ed313692498f950d37ddfeb8856d/result.json",
+        "docs/testing/2026-11-05-r1-003-memory-followup.md",
+        "artifacts/r1-20261104-memory-followup/wpf-final-exit.idle.json",
+        "artifacts/r1-20261104-memory-followup/wpf-final-confirm.idle.json",
+        "artifacts/r1-20261104-memory-followup/research-two-batches-review-scalars.trx",
+        "artifacts/r1-20261104-memory-followup/research-two-batches-postscan-followup.trx",
+        "artifacts/r1-20261104-memory-followup/final-noncapacity-20261105.trx"
+      ],
+      "implementationSummary": "2026-11-05 续作：完整WPF最终同版两次600秒空闲峰值199143424/196190208B、CPU均通过，观察/索引/会话发现保留；受控空闲失败向外层退出1传播。内部研究两批各一万项实际完成并经审计恢复核查，但优化后宿主峰值228409344B超200MiB；后续首批在当前负载逼近5分钟，批后扫描使前批证据到期，十批未运行。最终Release零警告错误，非显式容量组272/273，普通对象契约1000项到期失败。研究扫描租约不接入产品，R1-003仍in_progress，004/005/006/008不放行；实际规则和完整十批未验收。",
+      "diagnosticDecision": {
+        "status": "approved",
+        "date": "2026-10-23",
+        "source": "当前会话明确选择：允许前置隔离诊断（建议）",
+        "scope": "isolated-fixture-existing-journal-read-only-no-production-exemption",
+        "result": "completed-diagnostic-source-unproven-no-production-exemption"
+      },
+      "nextResearchDecision": {
+        "status": "approved",
+        "date": "2026-10-24",
+        "proposal": "docs/testing/2026-10-23-r1-003-next-decision.md",
+        "scope": "new-fixture-strict-write-lease-falsification-only-no-production-change",
+        "reason": "用户明确授权仅在新建独立样本中证伪写入租约；优先已有长寿命句柄、父目录属性、子树活动，记录消费者受阻和取消释放；反例即判不足，不改生产共享、活动保护或现有用户目录。",
+        "result": "completed-insufficient-counterexamples-no-production-protocol-change",
+        "evidence": "docs/testing/2026-10-24-r1-003-write-lease.md"
+      },
+      "remainingExitCriteria": [
+        "完整WPF十万项600秒空闲同版两次通过，但研究宿主连续两批峰值228409344B仍超过200MiB；完整十批尚未运行，普通入口继续严格且最多1000项，研究扫描租约不接入产品。",
+        "先定位第二批执行中GC堆与原生工作集峰值，并分解对象复核/稳定父目录/逐项审计分配和耗时；在原5分钟、8MiB、200MiB、可靠观察与完整审计约束下复验批后扫描和前批证据期限。普通1000项当前负载下到期失败也须修复复验。",
+        "真实消费者条件下Workspace正向执行、benchmark资格、npm组合/重建、转储规则及用户确认负担仍待各自验证；不越过004/005/006/008依赖。"
+      ],
+      "objectContractDecision": {
+        "status": "approved",
+        "date": "2026-10-25",
+        "decision": "D-13",
+        "source": "当前对话用户选择 B",
+        "scope": "object-contract-implementation-and-isolated-validation-rule-specific-gates",
+        "result": "implemented-isolated-validated-including-core-batch-continuity-production-rule-and-ui-gates-pending"
+      },
+      "preD13ImplementationGuide": "在独立样本上先测 1,000/1,001/10,000/100,000 规模的枚举/身份读取、清单字节、执行吞吐、实际到期位置、审计/DB/WAL、工作集、取消延迟与预期确认次数；首次对原限制的拒绝也作为结果记录。输出可支持规模、瓶颈与协议选型；小内容元数据样本不能冒充读取 20 GiB 的成本。此出口在规则接入和界面定稿前完成，006 依据结果实现并复测。\n\n先复现至少 3 个旧合格对象在真实 watcher、动态活动上下文下的连续执行；若出现自身删除导致指纹变化，建立仅属于当前批准对象且被执行结果证实的变化处理。不能按路径、时间接近或“正在清理”全局忽略通知。索引仍记录删除，合并提示不能吞掉观察缺口。",
+      "implementationHistory": [
+        {
+          "date": "2026-10-24",
+          "summary": "2026-10-24 获批写入租约证伪完成：0x80/0x81 共14组，父属性/子树反例均不足以放行，8次受控取消释放。清单减重/有界分页/恢复/历史UI读取drain完成，158回归、18历史组件通过；真实600px历史页塌陷已修补并补尾页/三模式/退出输入。真实watcher仍首项后NeedsPreview，100000项仍推算100次确认且实际确认0，R1-003及依赖出口未通过。5分钟/8MiB/1000对象/活动未知保护保持。"
+        },
+        {
+          "date": "2026-10-25",
+          "summary": "2026-10-25 D-13/B 对象级契约实现与隔离验证完成：真实 watcher 连续 3/100/1000 项通过；最终1000项64.221秒，原始通知/来源不确定/逐项复核保留；父元数据混合风险案例和危险停止矩阵通过。Release零警告错误，190回归、13 Workspace保护接线通过。中间到期、解码与观察不可靠失败均保留并修复复测。新契约只供隔离验证，普通入口仍严格；真实Node消费者阻止npm候选，正向Workspace清理未验。跨批仍受30分钟近期活动保护，1001/10000只验证拒绝截断，100000确认成本未通过，R1-003整体不放行。"
+        },
+        {
+          "date": "2026-10-25",
+          "summary": "2026-10-25 跨批证据衔接组件完成：同一执行器完整成功后可生成新的待确认清单；真实 watcher 的 3批×1项、3批×100项通过，原始活动与未选文件保留。Release零警告错误，210/210回归（新增20项跨批检查）、13项Workspace保护检查通过。前批5分钟证据期限、每批明确确认、有界回执与失败停止保留。仅核心API/隔离验证，未接入Workspace/UI连续操作；普通入口仍严格。本机Node消费者仍阻止正向清理。100000项至少100次确认、实际规则/容量/资源及安装版验收未完成；R1-003仍in_progress，004/005/006依赖不放行。"
+        },
+        {
+          "date": "2026-10-25",
+          "summary": "2026-10-25 继续推进：Workspace 跨批预览已接入同进程任务/取消/互斥/退出管理，仅供隔离验证；修复页面预览切页、取消、到期、转储枚举重入、主窗退出等待和空间测量未知反馈。首次drain忙循环失败已保留并修复。Release零警告错误，210/210回归、21预览Workspace、13真实消费者保护、20主窗检查及2退出屏障场景通过。桌面锁屏，实际UI/多DPI未验。编码研究10000项约3.39MB、100000项被8MiB拒绝；新复核时机或首批规模需用户选择，R1-003仍in_progress，后续依赖不放行。 补修确认后准备期停止请求丢失；最终21项预览检查通过。"
+        }
+      ],
+      "capacityDecision": {
+        "status": "approved",
+        "date": "2026-10-25",
+        "proposal": "docs/testing/2026-10-25-r1-003-capacity-decision.md",
+        "options": [
+          "isolated-fixed-manifest-segment-review-research",
+          "defer-large-scale-cleanup-from-first-release"
+        ],
+        "productionLimitsUnchanged": true,
+        "selected": "isolated-fixed-manifest-segment-review-research",
+        "source": "当前会话明确选择1",
+        "result": "research-completed-insufficient-10000-expired-production-unchanged",
+        "evidence": "docs/testing/2026-10-25-r1-003-segment-research.md"
+      },
+      "throughputWork": {
+        "status": "throughput_passed_memory_and_multibatch_pending",
+        "source": "user-request-complete-remaining-plan",
+        "baselineScanWaitMs": 265161.5489,
+        "pacedAttemptDeleted": 4928,
+        "currentSegmentSize": 1,
+        "productionEnabled": false,
+        "smallRoot": {
+          "approved": 10000,
+          "deleted": 10000,
+          "previewMs": 9262,
+          "executionMs": 173928,
+          "manifestBytes": 3309718,
+          "passed": true
+        },
+        "largeRoot": {
+          "date": "2026-10-28",
+          "observed": 100000,
+          "approved": 10000,
+          "deleted": 10000,
+          "previewMs": 11369,
+          "executionMs": 198126,
+          "scanGateWaitMs": 79213.7614,
+          "peakWorkingSetBytes": 265363456,
+          "throughputPassed": true,
+          "memoryWithin200MiB": false,
+          "passed": false,
+          "unapprovedPreserved": 90000
+        },
+        "evidence": "docs/testing/2026-10-28-preview-package.md",
+        "regressionPassed": 235,
+        "largeRootHistory": [
+          {
+            "date": "2026-10-25",
+            "result": {
+              "observed": 100000,
+              "approved": 10000,
+              "deleted": 6549,
+              "executionMs": 284938,
+              "scanGateWaitMs": 197576.5408,
+              "peakWorkingSetBytes": 262668288,
+              "passed": false,
+              "stopReason": "expired-waiting-for-scan",
+              "unapprovedPreserved": 90000,
+              "approvedRemaining": 3451
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "R1-004",
+      "name": "本次 benchmark 规则与再生成证明",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P3"
+      ],
+      "dependencies": [
+        "R1-001",
+        "R1-003"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-01",
+        "A-02",
+        "A-04",
+        "A-05"
+      ],
+      "description": "先只读关联历史运行报告、实验标记、当时生成索引与当前对象，核对生成代码/参数和具体来源证据，输出逐项“依据充分/已变化/缺证据”。报告对应 dirty 工作树时，提交号本身不能冻结当时代码。生成与用户数据无法区分的项保持排除，不补写一份标记便倒推来源已证实。验证同用途合成数据再生成，不承诺恢复原文件身份、时间与实验现场。",
+      "implementationGuide": "先只读关联历史运行报告、实验标记、当时生成索引与当前对象，核对生成代码/参数和具体来源证据，输出逐项“依据充分/已变化/缺证据”。报告对应 dirty 工作树时，提交号本身不能冻结当时代码。生成与用户数据无法区分的项保持排除，不补写一份标记便倒推来源已证实。验证同用途合成数据再生成，不承诺恢复原文件身份、时间与实验现场。\n\n当前代码的生成契约是 64 KiB 零缓冲写普通文件，前 36,480 个样本长 214,749 B，其余 63,520 个长 214,748 B；核验历史生成依据后才用于检测。需要读取内容时限定本次 fixture，不接触 Agent 会话/凭据；抽样结论只覆盖样本，全部候选的证明与读取成本分别记录。\n\n唯一新增规则限定已验证运行的生成样本，保留索引数据库/实验标记/报告/代码和未知文件；接入同一 ProtectionPolicy 和活动约束，规则首次关闭。样例先在独立实验目录验证；大样本按原非系统 NTFS 卷、空间预算与保留余量要求生成。",
+      "relatedFiles": [
+        {
+          "path": "tools/CClean.Poc/Program.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.Poc/IndexProbe.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Experiments/ExperimentSandbox.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/RuleCatalog.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/ProtectionPolicy.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/BenchmarkRule.cs",
+          "changeType": "create-if-needed",
+          "existsAtPlanning": false
+        },
+        {
+          "path": "tests/CClean.Tests/BenchmarkRuleTests.cs",
+          "changeType": "create-if-needed",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCriteria": "混入用户 `.bin`、报告、源码、链接/ADS、替换样本及标记损坏都不得误入；生成报告可定位到输入、工具和输出样本；实际重建通过。报告分别写“隔离规则验证”和“原有文件资格核验”，不能以前者替代后者。证据不足时报告具体缺口，该任务保持未通过。",
+      "legacyReferences": [],
+      "evidence": []
+    },
+    {
+      "id": "R1-005",
+      "name": "npm 与旧转储规则闭环",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P3"
+      ],
+      "dependencies": [
+        "R1-001",
+        "R1-003"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-04",
+        "A-05",
+        "A-06"
+      ],
+      "description": "真实检测 npm 工具来源与版本，保留专用独占、活动/未知保护，不能用常量冒充检测。对内容与索引验证可处理组合及用户保留子集；无法证明组合有效则明确禁用该组合，不擅自添加未选对象。规则各自生成上下文，不能由一个 npm 活动状态阻止独立合格转储。",
+      "implementationGuide": "真实检测 npm 工具来源与版本，保留专用独占、活动/未知保护，不能用常量冒充检测。对内容与索引验证可处理组合及用户保留子集；无法证明组合有效则明确禁用该组合，不擅自添加未选对象。规则各自生成上下文，不能由一个 npm 活动状态阻止独立合格转储。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CacheRule.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CrashDumpRule.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupConsumers.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/RuleCatalog.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CacheRuleCompatibilityTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CrashDumpRuleTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "真实 npm 缓存生成、自然静置、正式观察链路删除及再安装；未知 Node 消费者继续保护，不关闭用户进程凑正向样例。需要独立 Windows 用户环境时先检查可用性，缺失则登记验证缺口。转储保留最新时间全部文件与最近 48 小时；合成时间戳与真实时长证据分开。",
+      "legacyReferences": [
+        "DEV-024",
+        "DEV-027"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "R1-006",
+      "name": "保留偏好、有界扫描与批次清单",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P3",
+        "P4"
+      ],
+      "dependencies": [
+        "R1-002",
+        "R1-004",
+        "R1-005"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-02",
+        "A-03",
+        "A-05",
+        "A-06"
+      ],
+      "description": "把按规则的候选枚举从页面移到共享入口；按预算流式生成有限批次，排除原因样本和待扫描位置有上限；新文件不加入旧批准。业务保留逻辑放 Core 并通过现有测试工程验证，小型显示偏好仍由 AppPreferences 负责。按范围/规则版本保存类别偏好和具体保留，路径或身份变化重判；保留是默认排除，新增规则不会被旧偏好自动启用。多根间不重复统计或饿死后续规则。",
+      "implementationGuide": "把按规则的候选枚举从页面移到共享入口；按预算流式生成有限批次，排除原因样本和待扫描位置有上限；新文件不加入旧批准。业务保留逻辑放 Core 并通过现有测试工程验证，小型显示偏好仍由 AppPreferences 负责。按范围/规则版本保存类别偏好和具体保留，路径或身份变化重判；保留是默认排除，新增规则不会被旧偏好自动启用。多根间不重复统计或饿死后续规则。\n\n按 003 的选型实现，并用 1,000/1,001/100,002 规模复测清单字节、预览/执行耗时、内存、审计增长、确认次数与跨批保留。5 分钟有效期、8 MiB 清单及原资源预算保持；调整每批数量必须有对应实测和边界测试，不能只删 Take/Truncated 检查。历史查询与恢复核查同步支持有界分页/完整度，不能默默只显示前 3,000 条或仅核查前 1,000 个对象。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupPlanner.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupJournal.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupRecovery.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Storage/LocalStore.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/AppPreferences.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupPlanTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Cleanup/CleanupCandidateScanner.cs",
+          "changeType": "create-if-needed",
+          "existsAtPlanning": false
+        }
+      ],
+      "verificationCriteria": "Core/探针从大目录直接形成可执行本批，返回已检查/本批/剩余未知；在隔离大样本实际多批执行中记录成本和跨批保留一致性。006 的通过依据上述组件证据，不依赖尚未开发的 UI。真实 UI 无需重新查找目录/逐页重选，以及用户对确认负担的验收由 008/010/012 完成；A-03 整体保持待验，不能以组件通过替代。",
+      "legacyReferences": [
+        "DEV-025"
+      ],
+      "evidence": [],
+      "componentProgress": {
+        "date": "2026-10-24",
+        "status": "preparatory-components-only-not-task-acceptance",
+        "summary": "版本化紧凑manifest、Runs/Events/Manifest/Recovery分页、完整兼容读取及隔离测量已完成；保留偏好/扫描/跨批语义尚未实施，R1-004/005依赖未满足。",
+        "evidence": [
+          "docs/testing/2026-10-24-r1-003-components.md",
+          "artifacts/r1-20261024-tests/r1-20261024-regression.trx"
+        ]
+      }
+    },
+    {
+      "id": "R1-007",
+      "name": "分类工作台与范围管理页面",
+      "priority": "P0",
+      "status": "pending_validation",
+      "optional": false,
+      "workPackages": [
+        "P1",
+        "P2"
+      ],
+      "dependencies": [
+        "R1-001",
+        "R1-002"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-01",
+        "A-08",
+        "A-09"
+      ],
+      "description": "按页面规格落地“空间与清理”启动页、分类/列表/说明联动、工具/项目/磁盘筛选和持续可见的观察状态。开发活动与项目/版本复用已有页面能力，不接入虚假的进程证实；设置和清理历史从对应上下文进入，系统清理按钮明确外部工具名称。",
+      "implementationGuide": "按页面规格落地“空间与清理”启动页、分类/列表/说明联动、工具/项目/磁盘筛选和持续可见的观察状态。开发活动与项目/版本复用已有页面能力，不接入虚假的进程证实；设置和清理历史从对应上下文进入，系统清理按钮明确外部工具名称。\n\n后台扫描有取消、进度与范围版本，旧请求结果不能覆盖新范围；清楚区分未扫描、无内容、未支持、活动中、不完整和错误。保存失败原位提示，配置不可用不伪装成首次空白状态；不为上述目标强制引入新的 MVVM 框架。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/MainWindow.xaml",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/MainWindow.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/OverviewView.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/ProjectWorkbenchView.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/ProjectSetupView.xaml",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "页面规格三张说明卡、快速切换范围/切页/重扫、无权限/空状态；键盘焦点、虚拟化/分页、长路径、中文、浅深主题和实际 125%/150%/200% DPI。查看报告或范围详情返回后保留选择与位置。",
+      "legacyReferences": [],
+      "evidence": [
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-007-workbench.md",
+        "docs/testing/first-release-r1-007.md",
+        "artifacts/r1-ui-lifecycle-tests/build-final.log",
+        "artifacts/r1-ui-lifecycle-tests/r1-ui-lifecycle-final-recheck.trx",
+        "artifacts/ui-probe-20261023T110242151/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261023T110313101/preferences.json",
+        "artifacts/ui-probe-20261023T105231918/latency.json",
+        "artifacts/ui-probe-20261023T104951394/desktop-interruption.json",
+        "artifacts/r1-ui-lifecycle-tests/final-verification.json",
+        "artifacts/ui-probe-20261024T024958386/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261024T024958386/desktop-observations.json",
+        "artifacts/ui-probe-20261024T031456156/workbench-lifecycle.json",
+        "docs/testing/2026-10-24-history-pagination.md",
+        "artifacts/ui-probe-20261024T032612177/history-desktop.json",
+        "artifacts/ui-probe-20261024T032612177/desktop-observations.json",
+        "artifacts/r1-20261024-tests/build-history-layout.log",
+        "artifacts/r1-20261024-tests/r1-20261024-regression.trx",
+        "docs/testing/2026-10-25-r1-workspace-preview-lifecycle.md",
+        "artifacts/ui-probe-20261025T104046786/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261025T104149389/desktop-blocked.json",
+        "artifacts/ui-probe-20261104T070950597/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261104T070950596/cleanup-preview-lifecycle.json",
+        "artifacts/ui-probe-20261104T070950600/object-contract.json",
+        "artifacts/ui-probe-20261104T070950596/history-paging.json"
+      ],
+      "implementationSummary": "2026-10-24 解锁后已真实输入复验中文长路径/盘点/只读索引/用途详情/返回/深色主题/明确退出；新20主窗组件通过。历史页实际矮窗塌陷保留失败并修复补验。三说明卡、故障矩阵、完整键盘/读屏、多DPI及安装版仍待验，状态pending_validation；完整选择规则归008。 2026-10-25：主窗20项复验通过；实际桌面锁屏，未新增键盘/多DPI验收。",
+      "implementationHistory": [
+        {
+          "date": "2026-10-25",
+          "summary": "2026-10-24 解锁后已真实输入复验中文长路径/盘点/只读索引/用途详情/返回/深色主题/明确退出；新20主窗组件通过。历史页实际矮窗塌陷保留失败并修复补验。三说明卡、故障矩阵、完整键盘/读屏、多DPI及安装版仍待验，状态pending_validation；完整选择规则归008。"
+        }
+      ],
+      "latestIndependentValidation": {
+        "date": "2026-10-25",
+        "workbenchComponentChecks": 24,
+        "workbenchEvidence": "artifacts/ui-probe-20261025T124956846/workbench-lifecycle.json",
+        "desktopEvidence": "artifacts/ui-probe-20261025T123318620/workbench-lifecycle.json",
+        "systemDpi": 100,
+        "installedUiAcceptance": false,
+        "summary": "首屏分类可见；隔离目录实际输入、盘点、Tab、深色、明确退出已检查；多 DPI、完整键盘/读屏及系统/安装版仍待验。"
+      }
+    },
+    {
+      "id": "R1-008",
+      "name": "选择、预览、执行与结果页面",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P4"
+      ],
+      "dependencies": [
+        "R1-006",
+        "R1-007"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-02",
+        "A-03",
+        "A-06",
+        "A-07",
+        "A-09"
+      ],
+      "description": "所有入口使用同一选择/预览服务；类别、具体项、筛选和跨页保留语义一致。预览列出本批范围、各类影响、合计与到期时间；确认后仅执行具体清单，不能将查阅行当选择，也不能将“全选本页”当“全部结果”。",
+      "implementationGuide": "所有入口使用同一选择/预览服务；类别、具体项、筛选和跨页保留语义一致。预览列出本批范围、各类影响、合计与到期时间；确认后仅执行具体清单，不能将查阅行当选择，也不能将“全选本页”当“全部结果”。\n\n执行任务由 Workspace 持有，切页/重复点击不创建第二次执行；给现有 Executor 加轻量进度回调或 IProgress，停止、失效、失败和部分完成有准确状态。结果按卷分列成功/跳过/失败/未执行、对象分配和系统可用量变化；历史能查完整清单与事件，不确定结果保持未知。后续批次重新预览确认，重启不重放。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupPreviewView.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/CleanupHistoryView.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/Views/FilesView.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "混合规则、保留子集、过期、新增/替换、文件消失/占用、取消、审计失败、并发占盘和测量失败，列表与审计一一对应；暂停增强或关闭页面不得扩大删除授权。\n\n真实 UI 能从大目录自动形成下一份待确认预览，保留项跨批继续生效，无需反复查找目录和逐页重选；记录完成目标的批数、确认次数、操作耗时，在 010 复验、012 由用户独立检验实际负担。需大量重复确认的结果不能仅凭 Core 通过标为 A-03 通过。",
+      "legacyReferences": [
+        "DEV-026"
+      ],
+      "evidence": [],
+      "componentProgress": {
+        "date": "2026-10-24",
+        "status": "history-components-only-not-task-acceptance",
+        "summary": "只读历史三模式、分页和退出drain及矮窗修补已完成限定组件/桌面检查；保留选择、预览、执行/结果完整链路和确认负担未通过，不提前验收008。",
+        "evidence": [
+          "docs/testing/2026-10-24-history-pagination.md",
+          "artifacts/ui-probe-20261024T032528759/history-paging.json",
+          "artifacts/ui-probe-20261024T032612177/history-desktop.json"
+        ]
+      }
+    },
+    {
+      "id": "R1-009",
+      "name": "托盘、单实例与观察生命周期",
+      "priority": "P0",
+      "status": "pending_validation",
+      "optional": false,
+      "workPackages": [
+        "P2"
+      ],
+      "dependencies": [
+        "R1-002"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-07",
+        "A-08",
+        "A-09"
+      ],
+      "description": "系统托盘提供恢复、观察状态、暂停/恢复和明确退出；窗口关闭仅隐藏，明确退出请求停止后续清理并等待当前项安全结束再释放观察器/审计。第二次启动唤醒同一实例，不重复创建 watcher/执行器；无需联网消息通道，不默认开机启动。",
+      "implementationGuide": "系统托盘提供恢复、观察状态、暂停/恢复和明确退出；窗口关闭仅隐藏，明确退出请求停止后续清理并等待当前项安全结束再释放观察器/审计。第二次启动唤醒同一实例，不重复创建 watcher/执行器；无需联网消息通道，不默认开机启动。",
+      "relatedFiles": [
+        {
+          "path": "src/CClean.App/App.xaml",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/App.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/MainWindow.xaml.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/ViewModels/WorkspaceViewModel.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/CClean.App.csproj",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "观察中/扫描中/清理中关窗、托盘恢复、重复启动、明确退出、系统会话结束和异常进程退出。停止状态不能卡成“已退出但仍删除”；强制终止后的结果由恢复核查处理，不自动续删；重启标出空窗。",
+      "legacyReferences": [],
+      "evidence": [
+        ".codex/plans/current/2026-10-23_cclean-first-release/sub-009-lifecycle.md",
+        "docs/testing/first-release-r1-009.md",
+        "artifacts/ui-probe-20261023T110242151/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261023T105037403/workspace-shutdown.json",
+        "artifacts/ui-probe-20261023T105231918/latency.json",
+        "artifacts/r1-ui-lifecycle-tests/r1-ui-lifecycle-final-recheck.trx",
+        "artifacts/ui-probe-20261023T104951394/desktop-interruption.json",
+        "artifacts/r1-ui-lifecycle-tests/build-final.log",
+        "artifacts/ui-probe-20261023T110313101/preferences.json",
+        "artifacts/r1-ui-lifecycle-tests/final-verification.json",
+        "artifacts/ui-probe-20261024T024958386/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261024T024958386/desktop-observations.json",
+        "artifacts/ui-probe-20261024T031456156/workbench-lifecycle.json",
+        "docs/testing/2026-10-24-history-pagination.md",
+        "artifacts/ui-probe-20261024T032612177/history-desktop.json",
+        "artifacts/ui-probe-20261024T032612177/desktop-observations.json",
+        "artifacts/r1-20261024-tests/build-history-layout.log",
+        "artifacts/r1-20261024-tests/r1-20261024-regression.trx",
+        "docs/testing/2026-10-25-r1-workspace-preview-lifecycle.md",
+        "artifacts/ui-probe-20261025T104046786/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261025T104149389/desktop-blocked.json",
+        "artifacts/ui-probe-20261025T103718569/cleanup-preview-lifecycle.json",
+        "artifacts/ui-probe-20261025T103836057/workspace-shutdown.json",
+        "artifacts/ui-probe-20261025T104648442/cleanup-preview-lifecycle.json",
+        "artifacts/r1-20261025-plan-push/build-final.log",
+        "artifacts/ui-probe-20261104T070950597/workbench-lifecycle.json",
+        "artifacts/ui-probe-20261104T070950596/cleanup-preview-lifecycle.json",
+        "artifacts/ui-probe-20261104T070950600/object-contract.json",
+        "artifacts/ui-probe-20261104T070950596/history-paging.json"
+      ],
+      "implementationSummary": "2026-10-24 20项完整主窗组件复验通过；历史读取已纳入取消/退出drain，18项组件与实际只读历史/明确退出补证。生产App双启动全路径、实际托盘菜单/系统会话/异常重启、SQLite写入中退出与安装版仍待验，状态pending_validation。 2026-10-25：补齐清理预览页取消/等待和Workspace跨批预览drain；21预览、20主窗及2退出屏障通过，中间等待忙循环已修复复测。实际桌面锁屏；安装版和系统会话等缺项保留。 补修确认后准备期停止请求丢失；最终21项预览检查通过。",
+      "implementationHistory": [
+        {
+          "date": "2026-10-25",
+          "summary": "2026-10-24 20项完整主窗组件复验通过；历史读取已纳入取消/退出drain，18项组件与实际只读历史/明确退出补证。生产App双启动全路径、实际托盘菜单/系统会话/异常重启、SQLite写入中退出与安装版仍待验，状态pending_validation。"
+        }
+      ],
+      "latestIndependentValidation": {
+        "date": "2026-10-25",
+        "workbenchComponentChecks": 24,
+        "workbenchEvidence": "artifacts/ui-probe-20261025T124956846/workbench-lifecycle.json",
+        "desktopEvidence": "artifacts/ui-probe-20261025T123318620/workbench-lifecycle.json",
+        "systemDpi": 100,
+        "installedUiAcceptance": false,
+        "summary": "首屏分类可见；隔离目录实际输入、盘点、Tab、深色、明确退出已检查；多 DPI、完整键盘/读屏及系统/安装版仍待验。"
+      }
+    },
+    {
+      "id": "R1-010",
+      "name": "规则与界面完整链路回归",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P4",
+        "P5"
+      ],
+      "dependencies": [
+        "R1-008",
+        "R1-009"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-01",
+        "A-02",
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-06",
+        "A-07",
+        "A-08",
+        "A-09"
+      ],
+      "description": "在同一待交付构建上串起发现/说明/保留/预览/真实执行/结果/重建；覆盖三规则独立与混合、跨盘缺口、真实 watcher、预算与中断。对新增偏好、范围摘要及配置版本执行旧 0.1.7 升级迁移；迁移失败保留旧文件并停止危险操作，未知高版本拒绝覆盖。",
+      "implementationGuide": "在同一待交付构建上串起发现/说明/保留/预览/真实执行/结果/重建；覆盖三规则独立与混合、跨盘缺口、真实 watcher、预算与中断。对新增偏好、范围摘要及配置版本执行旧 0.1.7 升级迁移；迁移失败保留旧文件并停止危险操作，未知高版本拒绝覆盖。",
+      "relatedFiles": [
+        {
+          "path": "tests/CClean.Tests/CleanupExecutionTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/CleanupRecoveryTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tests/CClean.Tests/DeletionSafetyTests.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.UiProbe/Program.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.Poc/CacheProbe.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/cleanup-acceptance.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "选中的必测用例数量大于 0；现有对抗测试与新集成场景通过。安装版用户体验最终在 012 复验，不用 UiProbe 或单测替代人实际使用；每个未通过项有操作/预期/实际/修复版本/复验记录，历史 pending_validation 不自动关闭。",
+      "legacyReferences": [
+        "DEV-017",
+        "DEV-018",
+        "DEV-027"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "R1-011",
+      "name": "性能、空间预算与多日稳定性",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P5"
+      ],
+      "dependencies": [
+        "R1-010"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-03",
+        "A-10"
+      ],
+      "description": "按原采样协议复测 10 万文件/20 GiB 的首扫（冷/热条件分别记录）、10 分钟空闲 CPU/工作集、交互延迟、预览取消、审计/索引预算与实际多批成本；只针对瓶颈调整，保留身份和持久审计校验。",
+      "implementationGuide": "按原采样协议复测 10 万文件/20 GiB 的首扫（冷/热条件分别记录）、10 分钟空闲 CPU/工作集、交互延迟、预览取消、审计/索引预算与实际多批成本；只针对瓶颈调整，保留身份和持久审计校验。",
+      "relatedFiles": [
+        {
+          "path": "tools/Measure-AppIdle.ps1",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/Measure-AppStability.ps1",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.UiProbe/LatencyProbe.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "tools/CClean.Poc/IndexProbe.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.Core/Storage/RuntimeBudget.cs",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/release-acceptance.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "CPU ≤ 1%、工作集 ≤ 200 MiB、首扫 ≤ 60 秒、UI P95 ≤ 2 秒、DB/WAL/SHM ≤ 300 MiB、日志 ≤ 50 MiB；扫描取消后目标 2 秒内回到可操作状态，实测失败就记录失败。内存旧失败不能四舍五入为通过。\n\n新版连续 72 小时（259200 秒）、30 秒采样，记录正常开发负载、暂停/托盘状态、卷不可用与观察缺口；超过 90 秒采样空窗需解释并重新形成有效连续证据。脚本退出 0 只代表采样结束，当前 MultiDayAcceptance=not_assessed 不能改称通过；单独评估 CPU/工作集/私有内存、预算、异常与趋势，不能把 72 小时无崩溃写成绝无泄漏。现有 DataBytes 仅统计顶层文件；新增子目录时同步补足测量范围。长时平均 CPU 不替代 600 秒空闲验收，活动峰值与空闲门槛分开评估。",
+      "legacyReferences": [
+        "DEV-019",
+        "DEV-028"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "R1-012",
+      "name": "内部安装交付与用户独立验收",
+      "priority": "P0",
+      "status": "pending",
+      "optional": false,
+      "workPackages": [
+        "P5"
+      ],
+      "dependencies": [
+        "R1-011"
+      ],
+      "dependencyMode": "all_passed",
+      "acceptance": [
+        "A-01",
+        "A-02",
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-06",
+        "A-07",
+        "A-08",
+        "A-09",
+        "A-10"
+      ],
+      "description": "从可追溯干净提交构建内部包，记录版本/提交/哈希，验证全新安装与 0.1.7 升级的配置/历史/偏好迁移。安装构建须对应功能/资源证据，影响相关行为的后续变更必须复验相应门槛；保持未知规则默认关闭。按实际能力更新首页功能摘要、用户说明、随包审计及总账。",
+      "implementationGuide": "从可追溯干净提交构建内部包，记录版本/提交/哈希，验证全新安装与 0.1.7 升级的配置/历史/偏好迁移。安装构建须对应功能/资源证据，影响相关行为的后续变更必须复验相应门槛；保持未知规则默认关闭。按实际能力更新首页功能摘要、用户说明、随包审计及总账。",
+      "relatedFiles": [
+        {
+          "path": "tools/Build-InternalPackage.ps1",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "packaging/CClean.iss",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "src/CClean.App/CClean.App.csproj",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "README.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "CHANGELOG.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/user-guide.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/audit/implemented-features.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/05-delivery-plan.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        },
+        {
+          "path": "docs/testing/personal-acceptance.md",
+          "changeType": "review-or-update",
+          "existsAtPlanning": true
+        }
+      ],
+      "verificationCriteria": "用户在安装版独立完成用途判断、保留、预览核对和可追溯结果查看；不依赖开发者口头解释。记录大样本确认次数、理解困难、误选和任务完成情况，有困惑回到对应任务修正。正式 npm UI 和 benchmark 原文件资格缺口必须如实列出，不能用隔离演示代替全部目标。\n\nA-01～A-10 与相关原安全门槛均有同版证据才通过；用户验收待进行时保持 pending_validation。仅按真实证据更新旧 DEV-013/017/018/019/020/023～028 的对应部分，旧 ETW/USN 延后状态保留；不公开发行，不自动执行真实用户文件清理。",
+      "legacyReferences": [
+        "DEV-013",
+        "DEV-020",
+        "DEV-028"
+      ],
+      "evidence": []
+    }
+  ],
+  "acceptanceMappingPolicy": "A 编号表示任务所负责部分；Core/探针按自身出口通过，真实 UI 在010验证，用户独立操作与整组验收在012汇总，不能产生前置任务依赖尚未开发页面的验收循环。",
+  "parallelTaskIds": [
+    "R1-007",
+    "R1-009"
+  ],
+  "safetyContractDecision": "D-13",
+  "latestValidationSummary": "2026-11-05：完整WPF最终同版两次十万对象600秒空闲峰值199143424/196190208B通过，受控空闲失败外层退出1；研究两批各一万项完成及审计恢复通过，但宿主峰值228409344B超200MiB，后续批后扫描可耗尽前批5分钟证据期限。最终Release零警告错误，非显式容量组272/273，ObjectReviewV1组件1000项到期失败；十批与实际规则未验。R1-003仍in_progress，004/005/006/008不放行。旧失败保留，研究租约不接入产品，无打包、安装、提交、推送或既有用户文件清理。",
+  "validationHistory": [
+    {
+      "date": "2026-10-25",
+      "summary": "2026-10-25 吞吐与工作台优化完成本轮验证：Release 零警告错误，235 项非容量回归、25 项研究保护检查、3 项进程恢复、24 项主窗及最新 13 项消费者保护通过。小根 1000/1001/10000 项通过，一万项执行 173.928 秒；十万文件根批准一万项仍失败，到期完成 6549 项，扫描门等待 197.577 秒，测试宿主峰值 250.5 MiB。3451 个未完成批准对象和全部 90000 个未批准对象保留。R1-003 仍 in_progress，后续依赖未放行；007/009 待完整真实验收，资源/72 小时/安装升级及用户独立验收未关闭。旧失败与旧任务保留，无安装提交或既有用户文件清理。"
+    },
+    {
+      "date": "2026-10-28",
+      "summary": "2026-10-28 产出 0.2.0-preview.1 可追溯自包含安装包；保留未提交工作。235 回归、36 定向检查、24 主窗/21 预览/13 消费者保护/14 偏好检查通过，Release 零警告错误。十万文件根一万项完整清单 198.126 秒完成，90000 未批准文件保留；测试宿主峰值约 253 MiB，资源与实际多批未通过。普通入口严格且最多1000项，研究未启用。R1-003仍in_progress，规则/保留/统一跨批依赖未放行；完整UI/多DPI、72小时、安装升级与用户独立验收仍待办。发布目录隔离启动/双启动通过；桌面工具native pipe缺失，本轮未做实际人机交互验收，未安装到现有用户环境。"
+    },
+    {
+      "date": "2026-11-05",
+      "summary": "完整WPF最终同版两次600秒空闲峰值199143424/196190208B通过；受控失败子进程和外层均退出1。研究两批各一万项实际完成与审计恢复通过，但宿主峰值228409344B超200MiB；后来首批临界耗时使批后扫描后前批证据到期，十批未运行。最终Release零警告错误，非显式容量组272/273，ObjectReviewV1组件1000项到期失败。R1-003保持in_progress，004/005/006/008不放行，研究租约未接入产品。证据见docs/testing/2026-11-05-r1-003-memory-followup.md。"
+    }
+  ],
+  "previewDelivery": {
+    "version": "0.2.0-preview.1",
+    "status": "user_reported_invalid",
+    "installer": "artifacts/packages/CClean-0.2.0-preview.1-internal-win-x64.exe",
+    "provenance": "artifacts/packages/CClean-0.2.0-preview.1-build.json",
+    "evidence": "docs/testing/2026-10-28-preview-package.md",
+    "installedToUserEnvironment": false,
+    "releaseAcceptance": "pending",
+    "previousStatus": "preview_built_not_release_accepted",
+    "reportedAt": "2026-11-04",
+    "failureCause": "unknown",
+    "repackaging": "deferred-by-user"
+  },
+  "currentUserDirective": {
+    "date": "2026-11-04",
+    "userInstruction": "继续原计划开发，暂不再次打包",
+    "packageStatus": "user_reported_invalid",
+    "failureDetails": "用户反馈无效；具体症状与根因未确定，不把旧编译/发布目录启动证据解释为安装包可用性通过。",
+    "packagingAllowedThisTurn": false,
+    "previousInstallerSha256": "17ECE68C92A4DFDBA8072CCF669F1957B2434C2504CA537BBBA18CDE2FC15A17"
+  },
+  "latestEvidence": "docs/testing/2026-11-05-r1-003-memory-followup.md",
+  "currentDevelopmentStage": {
+    "subplan": "current/2026-10-23_cclean-first-release/sub-014-memory-continuity.md",
+    "implementation": "isolated_scan_lease_two_batches_completed_resource_failed",
+    "capacityAndResource": "wpf_idle_passed_research_host_failed_200_mib",
+    "nextFocus": "定位第二批执行峰值与普通1000项时限，保证批后扫描仍在前批期限内；均过门槛后测完整十批，研究租约不接入产品"
+  }
+}

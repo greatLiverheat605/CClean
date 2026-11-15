@@ -13,13 +13,110 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        var app = new CClean.App.App(); app.InitializeComponent();
+        if (args is ["--workspace-capacity", var sampleRoot, var dataRoot, var reportPath])
+        { WorkspaceCapacityProbe.Run(sampleRoot, dataRoot, reportPath); return; }
+        if (args is ["--single-instance-child", var childData, var childReport])
+        { WorkbenchLifecycleProbe.InstanceChild(childData, childReport); return; }
         var output = Path.GetFullPath(Path.Combine("artifacts", "ui-probe-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff")));
         Directory.CreateDirectory(output);
-        if (args.Contains("--latency")) { LatencyProbe.Run(app, output); return; }
+        if (args is ["--cleanup-preview-lifecycle"])
+        {
+            var previewApp = ScopeLifecycleProbe.CreateApplication();
+            previewApp.Dispatcher.BeginInvoke(async () =>
+            {
+                try { await CleanupPreviewLifecycleProbe.Run(output); Console.WriteLine(Path.Combine(output, "cleanup-preview-lifecycle.json")); }
+                catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+                finally { previewApp.Shutdown(Environment.ExitCode); }
+            });
+            previewApp.Run(); return;
+        }
+        if (args is ["--object-contract"])
+        {
+            var contractApp = ScopeLifecycleProbe.CreateApplication();
+            contractApp.Dispatcher.BeginInvoke(async () =>
+            {
+                try { await ObjectContractProbe.Run(output); Console.WriteLine(Path.Combine(output, "object-contract.json")); }
+                catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+                finally { contractApp.Shutdown(Environment.ExitCode); }
+            });
+            contractApp.Run();
+            return;
+        }
+        if (args is ["--history-desktop"])
+        {
+            HistoryPagingProbe.RunDesktop(ScopeLifecycleProbe.CreateApplication(), output);
+            return;
+        }
+        if (args is ["--history-paging"])
+        {
+            var historyApp = ScopeLifecycleProbe.CreateApplication();
+            historyApp.Dispatcher.BeginInvoke(async () =>
+            {
+                try { await HistoryPagingProbe.Run(output); Console.WriteLine(Path.Combine(output, "history-paging.json")); }
+                catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+                finally { historyApp.Shutdown(Environment.ExitCode); }
+            });
+            historyApp.Run();
+            return;
+        }
+        if (args is ["--preferences"])
+        {
+            var preferencesApp = ScopeLifecycleProbe.CreateApplication();
+            preferencesApp.Dispatcher.BeginInvoke(async () =>
+            {
+                try { await PreferencesProbe.Run(output); Console.WriteLine(Path.Combine(output, "preferences.json")); }
+                catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+                finally { preferencesApp.Shutdown(Environment.ExitCode); }
+            });
+            preferencesApp.Run();
+            return;
+        }
+        if (args is ["--workbench-lifecycle"] or ["--workbench-desktop"])
+        {
+            WorkbenchLifecycleProbe.Run(ScopeLifecycleProbe.CreateApplication(), output, args[0] == "--workbench-desktop");
+            return;
+        }
+        if (args is ["--workspace-shutdown"])
+        {
+            var shutdownApp = ScopeLifecycleProbe.CreateApplication();
+            shutdownApp.Dispatcher.BeginInvoke(async () =>
+            {
+                try { await WorkspaceShutdownProbe.Run(output); Console.WriteLine(Path.Combine(output, "workspace-shutdown.json")); }
+                catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+                finally { shutdownApp.Shutdown(Environment.ExitCode); }
+            });
+            shutdownApp.Run();
+            return;
+        }
+        if (args.Contains("--scope-lifecycle"))
+        {
+            if (args.Length != 1)
+            {
+                var error = new { mode = "scope-lifecycle", passed = false, failure = "Use --scope-lifecycle alone; desktop and other probe modes are not allowed." };
+                File.WriteAllText(Path.Combine(output, "scope-lifecycle.json"), JsonSerializer.Serialize(error), System.Text.Encoding.UTF8);
+                Console.WriteLine(JsonSerializer.Serialize(error)); Environment.ExitCode = 2; return;
+            }
+            try
+            {
+                var scopeApp = ScopeLifecycleProbe.CreateApplication();
+                ScopeLifecycleProbe.Run(scopeApp, output);
+            }
+            catch (Exception failure)
+            {
+                var report = new { mode = "scope-lifecycle", passed = false, failure = failure.ToString() };
+                File.WriteAllText(Path.Combine(output, "scope-lifecycle.json"), JsonSerializer.Serialize(report), System.Text.Encoding.UTF8);
+                Console.WriteLine(JsonSerializer.Serialize(report)); Environment.ExitCode = 1;
+            }
+            return;
+        }
+        if (args.Contains("--latency"))
+        {
+            LatencyProbe.Run(ScopeLifecycleProbe.CreateApplication(), output);
+            return;
+        }
+        var app = new CClean.App.App(); app.InitializeComponent();
         if (args.Contains("--desktop"))
         {
-            app.StartupUri = new Uri("/CClean.App;component/MainWindow.xaml", UriKind.Relative);
             void Report(Window window)
             {
                 var dpi = VisualTreeHelper.GetDpi(window);

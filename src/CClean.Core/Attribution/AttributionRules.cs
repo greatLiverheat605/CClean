@@ -17,7 +17,7 @@ public static class AttributionRules
             return new(EvidenceKind.Unknown, [], "观察不完整，无法确认来源");
         if (change.Kind == "初始存量") return new(EvidenceKind.Unknown, [], "观察前已存在，不归入本次会话创建");
         var matches = sessions.Where(s => s.Started <= change.Time && (s.Ended is null || change.Time <= s.Ended) &&
-            (s.ProjectId.ToString() == change.ProjectId || s.Dependencies.Any(root => Contains(root, change.Path)))).ToArray();
+            (s.ObservationKey == change.ProjectId || s.Dependencies.Any(root => Contains(root, change.Path)))).ToArray();
         if (matches.Length == 0) return new(EvidenceKind.Unknown, [], "没有匹配的手动会话或依赖关联");
         if (matches.Any(s => s.HasGap || s.State == SessionState.Interrupted))
             return new(EvidenceKind.Unknown, matches.Select(s => s.Id).ToArray(), "会话包含中断区间，来源未知");

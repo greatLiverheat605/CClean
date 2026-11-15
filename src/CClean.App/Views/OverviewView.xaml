@@ -1,69 +1,86 @@
-<UserControl x:Class="CClean.App.Views.OverviewView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<UserControl x:Class="CClean.App.Views.OverviewView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" SizeChanged="LayoutChanged">
  <UserControl.Resources>
-  <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="{DynamicResource Panel}"/><Setter Property="BorderBrush" Value="{DynamicResource Line}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="20"/></Style>
+  <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="{DynamicResource Panel}"/><Setter Property="BorderBrush" Value="{DynamicResource Line}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="16"/></Style>
   <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="{DynamicResource Accent}"/><Setter Property="Foreground" Value="{DynamicResource OnAccent}"/><Setter Property="BorderBrush" Value="{DynamicResource Accent}"/></Style>
+  <Style x:Key="DetailLabel" TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="Margin" Value="0,12,0,4"/></Style>
  </UserControl.Resources>
- <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
- <StackPanel Margin="0,0,12,0">
-  <Border Style="{StaticResource Card}">
-   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <StackPanel Margin="0,0,20,0">
-     <TextBlock Text="给开发留出更多空间" FontSize="23" FontWeight="SemiBold"/>
-     <TextBlock x:Name="DiskSummary" Text="正在读取磁盘…" Margin="0,8,0,10" Foreground="{DynamicResource Muted}"/>
-     <ProgressBar x:Name="DiskUsage" Height="8" Maximum="100" Foreground="{DynamicResource Accent}" Background="{DynamicResource Line}" BorderThickness="0" AutomationProperties.Name="系统盘已用比例"/>
-     <TextBlock Text="先清理系统临时文件；项目源码和版本副本保留。" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+ <Grid>
+ <ScrollViewer x:Name="OverviewScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" RequestBringIntoView="KeepReadingPosition">
+  <StackPanel Margin="0,0,12,0">
+   <Border Style="{StaticResource Card}"><StackPanel>
+    <TextBlock Text="磁盘容量" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6"/>
+    <ComboBox x:Name="VolumeChoice" SelectionChanged="VolumeChanged" AutomationProperties.Name="本机磁盘与容量" Height="36"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+    <TextBlock x:Name="DiskSummary" Text="正在读取各卷容量…" Foreground="{DynamicResource Muted}" Margin="0,8,0,8"/>
+    <ProgressBar x:Name="DiskUsage" Height="6" Maximum="100" Foreground="{DynamicResource Accent}" Background="{DynamicResource Line}" BorderThickness="0" AutomationProperties.Name="所选卷已用比例"/>
+   </StackPanel></Border>
+   <TextBlock Text="当前查看范围" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,6"/>
+   <Expander x:Name="ScopeFilters" Header="按登记范围、项目或工具筛选" Margin="0,0,0,8">
+   <WrapPanel>
+    <StackPanel Width="230" Margin="0,0,12,10"><TextBlock Text="已确认的物理范围"/><ComboBox x:Name="ScopeChoice" SelectionChanged="ScopeChanged" Height="36" AutomationProperties.Name="已确认的物理范围"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Root}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+    <StackPanel Width="230" Margin="0,0,12,10"><TextBlock Text="项目位置"/><ComboBox x:Name="ProjectChoice" SelectionChanged="ProjectChanged" Height="36" AutomationProperties.Name="项目位置筛选"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Root}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+    <StackPanel Width="170" Margin="0,0,12,10"><TextBlock Text="关联工具"/><ComboBox x:Name="ToolFilter" SelectionChanged="FilterChanged" Height="36" AutomationProperties.Name="关联工具筛选"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+   </WrapPanel>
+   </Expander>
+   <TextBlock Text="输入 Windows 本机目录进行只读盘点；查看内容不会选中或批准清理。" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+   <TextBox x:Name="ScanRoot" AutomationProperties.Name="盘点目录完整路径" TextChanged="SurveyRootChanged" TextWrapping="Wrap" Margin="0,0,0,8"/>
+   <WrapPanel>
+    <Button x:Name="BrowseButton" Content="选目录" Click="Browse"/>
+    <Button x:Name="ScanButton" Style="{StaticResource Primary}" Click="Scan" AutomationProperties.Name="开始或继续只读盘点"><TextBlock x:Name="ScanLabel" Text="开始盘点" Foreground="{DynamicResource OnAccent}"/></Button>
+    <Button x:Name="CancelButton" Content="停止盘点" IsEnabled="False" Click="Cancel"/>
+    <Button Content="管理此范围" Click="ManageCurrentScope"/>
+    <Button Content="查看此范围文件索引" Click="OpenCurrentFiles"/>
+   </WrapPanel>
+   <TextBlock x:Name="ScanStatus" Text="未盘点：选择范围后开始只读盘点；当前没有结果不代表内容为空。" Foreground="{DynamicResource Muted}" Margin="0,2,0,8" AutomationProperties.LiveSetting="Polite"/>
+   <TextBlock x:Name="ScanTiming" Text="盘点尚未开始" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,0,8"/>
+   <ProgressBar x:Name="ScanProgress" Height="3" Visibility="Collapsed" IsIndeterminate="True" Foreground="{DynamicResource Accent}"/>
+   <Grid x:Name="ClassificationLayout" Margin="0,10,0,0">
+    <Grid.ColumnDefinitions><ColumnDefinition x:Name="CategoryColumn" Width="190"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel x:Name="CategoryPanel" Margin="0,0,12,12">
+     <TextBlock Text="按用途查看" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8"/>
+     <ListBox x:Name="Filter" SelectionChanged="FilterChanged" MaxHeight="440" Background="{DynamicResource Panel}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="用途分类，数量为目录线索">
+      <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Label}" TextWrapping="Wrap" FontWeight="SemiBold"/><TextBlock Text="{Binding Measurement}" TextWrapping="Wrap" FontSize="12" Margin="0,4,0,0"/><TextBlock Text="{Binding State}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,4,0,0"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+      <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="8,10"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="AutomationProperties.Name" Value="{Binding Label}"/><Setter Property="AutomationProperties.HelpText" Value="{Binding State}"/></Style></ListBox.ItemContainerStyle>
+     </ListBox>
+     <TextBlock Text="合计为目录线索逻辑量，重叠未去重；包含子项，父子及各类不能相加，均非可释放量。" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
     </StackPanel>
-    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-     <Button Style="{StaticResource Primary}" Click="OpenDiskCleanup" Margin="0,0,0,8" AutomationProperties.Name="快速清理临时文件"><TextBlock Text="快速清理临时文件" Foreground="{DynamicResource OnAccent}"/></Button>
-     <Button Content="Windows 存储设置" Click="OpenStorage" Margin="0,0,0,8"/>
-     <Button Content="预览旧崩溃转储" Click="PreviewDumps" Margin="0"/>
-    </StackPanel>
+    <Grid x:Name="ContentPanel" Grid.Column="1">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="DetailColumn" Width="0"/></Grid.ColumnDefinitions>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+     <StackPanel>
+     <TextBlock x:Name="ListStatus" Text="尚无盘点结果" FontWeight="SemiBold" Margin="0,0,0,8"/>
+     <DataGrid x:Name="Results" Height="260" SelectionMode="Single" SelectionChanged="SelectionChanged" CanUserAddRows="False" AutomationProperties.Name="用途目录线索，查看不等于清理选择" HeadersVisibility="Column" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="目录" Binding="{Binding Path}" Width="*" MinWidth="130"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="ToolTip" Value="{Binding Path}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
+       <DataGridTextColumn Header="逻辑大小" Binding="{Binding Size}" Width="110" SortMemberPath="Bytes"/>
+       <DataGridTextColumn Header="文件数" Binding="{Binding Files}" Width="85"/>
+      </DataGrid.Columns>
+     </DataGrid>
+     <WrapPanel Margin="0,8,0,0"><Button x:Name="PreviousButton" Content="上一页" Click="PreviousPage" IsEnabled="False"/><Button x:Name="NextButton" Content="下一页" Click="NextPage" IsEnabled="False"/><TextBlock x:Name="PageStatus" VerticalAlignment="Center" Margin="8,0,0,8"/></WrapPanel>
+     </StackPanel>
+     <Border x:Name="DetailCard" Grid.Row="1" Style="{StaticResource Card}" Margin="0,4,0,0"><StackPanel>
+      <TextBlock x:Name="DetailTitle" Text="用途与影响" FontSize="19" FontWeight="SemiBold"/>
+      <TextBox x:Name="SelectedPath" Text="选择目录后显示完整路径" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Padding="0" Margin="0,8,0,0" AutomationProperties.Name="所查看对象的完整路径，可复制"/>
+      <TextBlock Text="是什么" Style="{StaticResource DetailLabel}"/><TextBlock x:Name="PurposeText"/>
+      <TextBlock Text="与谁有关 · 依据是否充分" Style="{StaticResource DetailLabel}"/><TextBlock x:Name="AssociationText"/>
+      <TextBlock Text="为什么保留" Style="{StaticResource DetailLabel}"/><TextBlock x:Name="ValueText"/>
+      <TextBlock Text="处理影响与重建条件" Style="{StaticResource DetailLabel}"/><TextBlock x:Name="ImpactText"/>
+      <TextBlock Text="计量与覆盖" Style="{StaticResource DetailLabel}"/><TextBlock x:Name="MeasurementText"/>
+      <TextBlock Text="当前操作" Style="{StaticResource DetailLabel}"/><TextBlock x:Name="Advice"/>
+      <WrapPanel Margin="0,12,0,0"><Button x:Name="OpenFolderButton" Content="打开位置" Click="OpenFolder" IsEnabled="False"/><Button x:Name="ViewFilesButton" Content="查看文件索引" Click="OpenSelectedFiles" IsEnabled="False"/><Button x:Name="DrillButton" Content="深入盘点" Click="Drill" IsEnabled="False"/><Button x:Name="RegisterButton" Content="管理此目录" Click="Register" IsEnabled="False"/></WrapPanel>
+     </StackPanel></Border>
+    </Grid>
    </Grid>
-  </Border>
-  <TextBlock Text="Windows 会展示清理清单并让你确认。请选择缓存 / 临时文件，保留下载和回收站中仍需要的内容。" Foreground="{DynamicResource Muted}" FontSize="12" Margin="4,8,0,18"/>
-  <DockPanel Margin="0,0,0,10">
-   <TextBlock DockPanel.Dock="Left" Text="空间盘点" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
-   <TextBlock Text="只读扫描 · 已排除系统文件" Foreground="{DynamicResource Muted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-  </DockPanel>
-  <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBox x:Name="ScanRoot" AutomationProperties.Name="盘点目录" Margin="0,0,8,0"/>
-   <Button Grid.Column="1" x:Name="BrowseButton" Content="选目录" Click="Browse" Margin="0,0,8,0"/>
-   <Button Grid.Column="2" x:Name="ScanButton" Style="{StaticResource Primary}" Click="Scan" Margin="0,0,8,0" AutomationProperties.Name="开始或继续盘点"><TextBlock x:Name="ScanLabel" Text="开始盘点" Foreground="{DynamicResource OnAccent}"/></Button>
-   <Button Grid.Column="3" x:Name="CancelButton" Content="停止" IsEnabled="False" Click="Cancel" Margin="0"/>
-  </Grid>
-  <Grid Margin="0,4,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBlock x:Name="ScanStatus" Text="点击开始盘点，发现项目和用户目录；系统文件与系统目录不列出。" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" Margin="0,0,12,0"/>
-   <ComboBox Grid.Column="1" x:Name="Filter" SelectedIndex="0" MinWidth="170" SelectionChanged="FilterChanged" AutomationProperties.Name="盘点分类">
-    <ComboBoxItem Content="空间占用排行"/><ComboBoxItem Content="项目与版本副本"/><ComboBoxItem Content="常见缓存"/>
-   </ComboBox>
-  </Grid>
-  <ProgressBar x:Name="ScanProgress" Height="3" Visibility="Collapsed" IsIndeterminate="True" Foreground="{DynamicResource Accent}"/>
-  <DataGrid x:Name="Results" Height="245" SelectionMode="Single" SelectionChanged="SelectionChanged" CanUserAddRows="False" AutomationProperties.Name="空间盘点结果" HeadersVisibility="Column" BorderBrush="{DynamicResource Line}" BorderThickness="1">
-   <DataGrid.Columns>
-    <DataGridTextColumn Header="目录" Binding="{Binding Name}" Width="*"/>
-    <DataGridTemplateColumn Header="已盘点大小" Width="155" SortMemberPath="Bytes"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Margin="6,2"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="4"/></Grid.RowDefinitions><TextBlock Text="{Binding Size}" FontSize="12" VerticalAlignment="Center"/><ProgressBar Grid.Row="1" Value="{Binding Share}" Maximum="100" Foreground="{DynamicResource Accent}" Background="{DynamicResource Line}" BorderThickness="0" AutomationProperties.Name="占已盘点文件大小比例"/></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-    <DataGridTextColumn Header="类别" Binding="{Binding Category}" Width="140"/>
-    <DataGridTextColumn Header="文件数" Binding="{Binding Files}" Width="80"/>
-   </DataGrid.Columns>
-  </DataGrid>
-  <Border Style="{StaticResource Card}" Margin="0,10,0,0" Padding="16">
-   <StackPanel>
-    <TextBlock x:Name="SelectedPath" Text="选中一个目录，查看位置和下一步操作。" FontWeight="SemiBold"/>
-    <TextBlock x:Name="Advice" Text="按路径统计逻辑大小，硬链接可能重复；父子目录不能相加，大小不等于可释放空间。" Foreground="{DynamicResource Muted}" Margin="0,8,0,12"/>
-    <WrapPanel>
-     <Button x:Name="OpenFolderButton" Content="打开文件夹" Click="OpenFolder" IsEnabled="False"/>
-     <Button x:Name="DrillButton" Content="深入盘点此目录" Click="Drill" IsEnabled="False"/>
-     <Button x:Name="RegisterButton" Content="加入持续监测" Click="Register" IsEnabled="False"/>
-    </WrapPanel>
-   </StackPanel>
-  </Border>
-  <Expander Header="已登记项目的增长监测" Margin="0,18,0,12" Foreground="{DynamicResource Ink}">
-   <StackPanel Margin="0,12,0,0">
-    <UniformGrid Columns="3"><StackPanel><TextBlock Text="已知逻辑大小" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="Logical" FontSize="20"/></StackPanel><StackPanel><TextBlock Text="分配估算" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="Allocated" FontSize="20"/></StackPanel><StackPanel><TextBlock Text="登记后净变化" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="Growth" FontSize="20"/></StackPanel></UniformGrid>
-    <TextBlock x:Name="Coverage" Margin="0,12,0,8" Foreground="{DynamicResource Muted}"/>
-    <Button Content="刷新监测统计" Click="Refresh" HorizontalAlignment="Left"/>
-   </StackPanel>
-  </Expander>
- </StackPanel>
+   <Expander Header="所选卷已登记范围的最后索引" Margin="0,18,0,12" Foreground="{DynamicResource Ink}"><StackPanel Margin="0,12,0,0">
+    <WrapPanel><StackPanel Width="210" Margin="0,0,12,8"><TextBlock Text="已知去重逻辑量" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="Logical" FontSize="20"/></StackPanel><StackPanel Width="210" Margin="0,0,12,8"><TextBlock Text="已知去重分配" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="Allocated" FontSize="20"/></StackPanel><StackPanel Width="210" Margin="0,0,12,8"><TextBlock Text="现存文件相对基线变化" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="Growth" FontSize="20"/></StackPanel></WrapPanel>
+    <TextBlock x:Name="Coverage" Foreground="{DynamicResource Muted}" Margin="0,4,0,8"/><Button Content="刷新容量与索引统计" Click="Refresh" HorizontalAlignment="Left"/>
+   </StackPanel></Expander>
+   <Expander Header="Windows 系统工具（独立窗口）" Margin="0,0,0,12"><StackPanel Margin="0,8,0,0"><TextBlock Text="系统工具有自己的清单与确认流程；这里的用途分类不会传递删除授权。" Foreground="{DynamicResource Muted}"/><WrapPanel Margin="0,8,0,0"><Button Content="打开 Windows 存储设置" Click="OpenStorage"/><Button Content="打开 Windows 磁盘清理" Click="OpenDiskCleanup"/></WrapPanel></StackPanel></Expander>
+  </StackPanel>
  </ScrollViewer>
+ <Grid x:Name="FilesPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <Button Content="← 返回用途工作台" Click="BackFromFiles" HorizontalAlignment="Left"/>
+  <ContentControl Grid.Row="1" x:Name="FilesContent"/>
+ </Grid>
+ </Grid>
 </UserControl>

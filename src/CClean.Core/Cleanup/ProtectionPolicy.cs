@@ -3,7 +3,10 @@ using CClean.Core.Sessions;
 
 namespace CClean.Core.Cleanup;
 
-public sealed record ProtectionDecision(bool Eligible, string Category, string Reason, RuleScope? Scope = null);
+public sealed record ProtectionDecision(bool Eligible, string Category, string Reason, RuleScope? Scope = null)
+{
+    public Monitoring.ContentExplanation Explain(string path) => Monitoring.ContentClassification.Describe(path, decision: this);
+}
 
 public static class ProtectionPolicy
 {

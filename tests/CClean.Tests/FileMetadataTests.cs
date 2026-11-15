@@ -80,6 +80,32 @@ public class FileMetadataTests
         Assert.True(GC.GetAllocatedBytesForCurrentThread() - before < reads * 16 * 1024);
     }
 
+    [Theory]
+    [InlineData("write")]
+    [InlineData("ads")]
+    [InlineData("replace")]
+    [InlineData("hardlink")]
+    public void ReusingSnapshotValuesStillChecksFreshHandleMetadataAndStreams(string change)
+    {
+        using var box = Sandbox();
+        var path = box.CreateFixture("revalidated.bin", 10);
+        using var parent = new DirectoryLease(box.RunDirectory);
+        var first = WindowsFileMetadata.Read(path, parent);
+        Assert.True(first.IsOrdinaryFile);
+        Assert.Same(first, WindowsFileMetadata.Read(path, parent, first));
+        switch (change)
+        {
+            case "write": File.AppendAllText(path, "external", System.Text.Encoding.UTF8); break;
+            case "ads": File.WriteAllBytes(path + ":external", [9]); break;
+            case "replace": File.Delete(path); File.WriteAllBytes(path, [9]); break;
+            case "hardlink": Assert.True(CreateHardLinkW(Path.Combine(box.RunDirectory, "alias.bin"), path, IntPtr.Zero)); break;
+        }
+        var current = WindowsFileMetadata.Read(path, parent, first);
+        Assert.NotSame(first, current);
+        Assert.Equal(WindowsFileMetadata.Read(path), current);
+        if (change is "ads" or "hardlink") Assert.False(current.IsOrdinaryFile);
+    }
+
     [Fact]
     public void SymbolicLinkIsNotFollowed()
     {
@@ -100,6 +126,19 @@ public class FileMetadataTests
         var space = VolumeSpaceReader.Read(Path.GetTempPath());
         Assert.True(space.UserAvailableBytes <= space.VolumeFreeBytes);
         Assert.True(space.VolumeFreeBytes <= space.TotalBytes);
+    }
+
+    [Fact]
+    public void VolumeListingKeepsUnavailableVolumesSeparateFromZeroCapacity()
+    {
+        var root = Path.GetPathRoot(Path.GetTempPath())!;
+        var volumes = VolumeSpaceReader.ReadVolumes([root, root.ToLowerInvariant(), "invalid\0root"]);
+        Assert.Equal(2, volumes.Count);
+        Assert.True(volumes[0].Available);
+        Assert.NotNull(volumes[0].Space);
+        Assert.False(volumes[1].Available);
+        Assert.Null(volumes[1].Space);
+        Assert.NotEmpty(volumes[1].Error!);
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
