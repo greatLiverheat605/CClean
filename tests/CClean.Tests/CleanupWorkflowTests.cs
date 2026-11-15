@@ -397,7 +397,8 @@ public partial class CleanupWorkflowTests(Xunit.Abstractions.ITestOutputHelper o
 
     internal sealed class Fixture : IDisposable
     {
-        private readonly ExperimentSandbox box = new(Path.Combine(Path.GetTempPath(), "cclean-workflow-" + Guid.NewGuid().ToString("N")));
+        // Keep the 1,000-object case inside the 262,144-character notification evidence budget.
+        private readonly ExperimentSandbox box = new(Path.Combine(Path.GetTempPath(), "w-" + Guid.NewGuid().ToString("N")[..16]));
         public string Root { get; }
         public string Data { get; }
         public string[] Paths { get; }
