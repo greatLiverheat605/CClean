@@ -5,6 +5,10 @@ using CClean.Core.Sessions;
 
 namespace CClean.Tests;
 
+[CollectionDefinition("Cleanup workflow")]
+public sealed class CleanupWorkflowCollection { }
+
+[Collection("Cleanup workflow")]
 [Trait("Category", "CleanupWorkflow")]
 [Trait("Category", "MvpP0")]
 public partial class CleanupWorkflowTests(Xunit.Abstractions.ITestOutputHelper output)
@@ -391,7 +395,7 @@ public partial class CleanupWorkflowTests(Xunit.Abstractions.ITestOutputHelper o
         if (change == "same-path-replacement") Assert.Equal(new byte[] { 8, 9, 10 }, File.ReadAllBytes(fixture.Paths[1]));
     }
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         private readonly ExperimentSandbox box = new(Path.Combine(Path.GetTempPath(), "cclean-workflow-" + Guid.NewGuid().ToString("N")));
         public string Root { get; }

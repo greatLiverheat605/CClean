@@ -6,12 +6,14 @@ using CClean.Core.Storage;
 
 namespace CClean.Tests;
 
-public partial class CleanupWorkflowTests
+[Collection("Cleanup workflow")]
+public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelper output)
 {
-    private static CleanupContext SegmentContext(Fixture fixture) => fixture.Context() with { Contract = CleanupContract.SegmentReviewResearch };
+    private static CleanupContext SegmentContext(CleanupWorkflowTests.Fixture fixture) => fixture.Context() with { Contract = CleanupContract.SegmentReviewResearch };
 
     [Theory]
     [Trait("Category", "SegmentResearchScale")]
+    [Trait("Category", "Scale")]
     [InlineData(1000)]
     [InlineData(1001)]
     [InlineData(10000)]
@@ -20,16 +22,19 @@ public partial class CleanupWorkflowTests
 
     [Fact]
     [Trait("Category", "SegmentResearchRootScale")]
+    [Trait("Category", "Scale")]
     public async Task SegmentResearchTenThousandApprovedWithinHundredThousandObserved()
         => await RunSegmentScale(10000, 100000);
 
     [Fact]
     [Trait("Category", "SegmentResearchTwoBatchScale")]
+    [Trait("Category", "Scale")]
     public async Task SegmentResearchTwoBatchesWithinHundredThousandObserved()
         => await RunSegmentScale(10000, 100000, batches: 2);
 
     [Fact]
     [Trait("Category", "SegmentResearchBatchScale")]
+    [Trait("Category", "Scale")]
     public async Task SegmentResearchHundredThousandUsesTenSeparatelyConfirmedManifests()
         => await RunSegmentScale(10000, 100000, batches: 10);
 
@@ -46,7 +51,7 @@ public partial class CleanupWorkflowTests
                 allocatedBytes = GC.GetTotalAllocatedBytes() }));
         }
         SampleMemory("before-fixture");
-        using var fixture = new Fixture(count: observedCount) { ObjectReview = true };
+        using var fixture = new CleanupWorkflowTests.Fixture(count: observedCount) { ObjectReview = true };
         SampleMemory("fixture-created");
         await fixture.Ready(timeoutSeconds: observedCount > 10001 ? 60 : 10);
         SampleMemory("first-scan-ready");
@@ -166,6 +171,13 @@ public partial class CleanupWorkflowTests
             usage = RuntimeBudget.Measure(fixture.Data), peakWorkingSetBytes = Process.GetCurrentProcess().PeakWorkingSet64 }));
         await Assert.ThrowsAsync<InvalidOperationException>(() => executor.PreviewNext(fixture.Paths.TakeLast(1), () => Task.FromResult(SegmentContext(fixture))));
     }
+
+}
+
+public partial class CleanupWorkflowTests
+{
+
+    private static CleanupContext SegmentContext(CleanupWorkflowTests.Fixture fixture) => fixture.Context() with { Contract = CleanupContract.SegmentReviewResearch };
 
     [Theory]
     [InlineData("write")]
