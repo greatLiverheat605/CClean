@@ -108,10 +108,7 @@ internal sealed class ObjectCleanupReview
             { reason = "通知序列不完整"; return false; }
             foreach (var entry in events)
             {
-                if (entry.Kind == WatcherChangeTypes.Deleted && receipts.TryGetValue(entry.Path, out var receipt) &&
-                    receipt.TryGetValue(evidence.Id, out var beforeDelete) && entry.Sequence > beforeDelete) continue;
-                if (entry.Kind == WatcherChangeTypes.Changed && entry.OldPath is null && receiptParents.Contains(entry.Path) &&
-                    ParentStillBound(entry.Path)) continue;
+                if (AllowsReceiptNotification(entry, evidence.Id)) continue;
                 reason = $"相关通知不满足对象级继续条件：{entry.Kind} {entry.Path}";
                 return false;
             }
@@ -172,6 +169,32 @@ internal sealed class ObjectCleanupReview
     }
 
     internal bool IsCurrent(CleanupContext context) => context.Observations.All(o => o.Monitor.IsObservationCurrent(o.Evidence));
+
+    // A receipt notification can arrive after the pre-delete context was captured but before the same-handle mark.
+    // It remains admissible only within the D-13 rules; every unrelated event still stops this deletion.
+    internal bool IsCurrentOrReceiptOnly(CleanupContext context)
+    {
+        foreach (var observed in context.Observations)
+        {
+            var baseline = observed.Evidence;
+            if (!cursors.TryGetValue(baseline.Id, out var after) || after != baseline.Sequence) return false;
+            var evidence = observed.Monitor.Observe();
+            if (evidence.Id != baseline.Id || !evidence.Reliable || evidence.Sequence < after || evidence.DroppedThrough > after ||
+                evidence.ScanGaps != baseline.ScanGaps) return false;
+            var events = EventsAfter(evidence, after);
+            if (events.LongLength != evidence.Sequence - after) return false;
+            if (!events.All(entry => AllowsReceiptNotification(entry, evidence.Id))) return false;
+        }
+        return true;
+    }
+
+    private bool AllowsReceiptNotification(DirectoryNotification entry, Guid observationId)
+    {
+        if (entry.Kind == WatcherChangeTypes.Deleted && receipts.TryGetValue(entry.Path, out var receipt) &&
+            receipt.TryGetValue(observationId, out var beforeDelete) && entry.Sequence > beforeDelete) return true;
+        return entry.Kind == WatcherChangeTypes.Changed && entry.OldPath is null && receiptParents.Contains(entry.Path) &&
+            ParentStillBound(entry.Path);
+    }
 
     private static DirectoryNotification[] EventsAfter(DirectoryObservation evidence, long after)
     {

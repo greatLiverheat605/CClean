@@ -51,7 +51,7 @@ public sealed class CleanupExecutor(CleanupJournal journal)
             var refreshed = await currentContext();
             if (context.Fingerprint() != refreshed.Fingerprint() ||
                 !await Task.Run(() => previous.Validate(refreshed, candidate.Items.Where(i => i.Decision.Eligible), journal, cancellation, out reason)) ||
-                !previous.IsCurrent(refreshed))
+                !previous.IsCurrentOrReceiptOnly(refreshed))
                 throw new InvalidOperationException("跨批预览期间状态变化，请重新核查。");
             cancellation.ThrowIfCancellationRequested();
             var plan = new CleanupPlan(candidate.Created, refreshed.Fingerprint(), candidate.Items.ToList(), candidate.Truncated,
@@ -169,7 +169,7 @@ public sealed class CleanupExecutor(CleanupJournal journal)
                 TestCheckpoint?.Invoke("after-review");
                 var executionContext = review is null ? context : context with { Activity = context.IndependentActivity! };
                 var result = await Task.Run(() => DeleteOne(plan, item, executionContext,
-                    review is null ? null : () => !cancellation.IsCancellationRequested && review.IsCurrent(context), cancellation,
+                    review is null ? null : () => !cancellation.IsCancellationRequested && review.IsCurrentOrReceiptOnly(context), cancellation,
                     segmented ? ordinal : null), CancellationToken.None);
                 if (result.DeleteMarked) { deleted++; estimate = checked(estimate + item.File.AllocatedBytes!.Value); }
                 else skipped++;
