@@ -29,6 +29,7 @@ public partial class CleanupWorkflowTests
             Assert.DoesNotContain(journal.Runs(), r => r.Id == plan.Id.ToString());
             Assert.Equal(TimeSpan.FromMinutes(5), plan.Expires - plan.Created);
             var result = await executor.ExecuteApproved(plan, () => Task.FromResult(BatchContext(fixture, research)));
+            output.WriteLine($"Batch result: {result.State}, deleted={result.Deleted}, message={result.Message}");
             Assert.Equal("Completed", result.State); Assert.Equal(batchSize, result.Deleted);
             if (batch > 0) Assert.Contains(journal.Events(plan.Id.ToString()), e => e.State == "ContinuationFrom" && e.Reason == ids[^1].ToString());
             ids.Add(plan.Id);

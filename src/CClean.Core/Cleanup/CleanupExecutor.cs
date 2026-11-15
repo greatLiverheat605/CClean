@@ -162,7 +162,7 @@ public sealed class CleanupExecutor(CleanupJournal journal)
                 if (!valid)
                 {
                     journal.Finish(plan.Id, "NeedsPreview", reason);
-                    return new(plan.Id, "NeedsPreview", deleted, skipped, estimate, "状态已变化，需重新预览。");
+                    return new(plan.Id, "NeedsPreview", deleted, skipped, estimate, "状态已变化，需重新预览：" + reason);
                 }
                 if (review is not null) ReviewedObjects = review.ReviewedObjects;
                 if (cancellation.IsCancellationRequested) break;
@@ -181,7 +181,7 @@ public sealed class CleanupExecutor(CleanupJournal journal)
                     var stoppedContext = await currentContext();
                     await Task.Run(() => review.Validate(stoppedContext, ToReview(), journal, cancellation, out _));
                     journal.Finish(plan.Id, "NeedsPreview", result.Reason);
-                    return new(plan.Id, "NeedsPreview", deleted, skipped, estimate, "对象复核或通知状态变化，后续项未执行。");
+                    return new(plan.Id, "NeedsPreview", deleted, skipped, estimate, "对象复核或通知状态变化，后续项未执行：" + result.Reason);
                 }
                 TestCheckpoint?.Invoke("after-result");
             }
@@ -192,7 +192,7 @@ public sealed class CleanupExecutor(CleanupJournal journal)
                 if (!await Task.Run(() => review.Validate(finalContext, [], journal, cancellation, out finalReason)))
                 {
                     journal.Finish(plan.Id, "NeedsPreview", finalReason);
-                    return new(plan.Id, "NeedsPreview", deleted, skipped, estimate, "结束复核发现变化；已完成项保留，需核查记录。");
+                    return new(plan.Id, "NeedsPreview", deleted, skipped, estimate, "结束复核发现变化；已完成项保留，需核查记录：" + finalReason);
                 }
             }
             var state = cancellation.IsCancellationRequested ? "Cancelled" : skipped == 0 ? "Completed" : "Partial";

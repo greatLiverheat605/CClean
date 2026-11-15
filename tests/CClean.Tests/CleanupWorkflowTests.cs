@@ -58,8 +58,10 @@ public partial class CleanupWorkflowTests(Xunit.Abstractions.ITestOutputHelper o
         using var journal = new CleanupJournal(fixture.Data);
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var result = await new CleanupExecutor(journal).ExecuteApproved(plan, () => Task.FromResult(fixture.Context()));
+        var finalObservation = fixture.Monitor.Observe();
         output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { count, result, elapsedMs = watch.ElapsedMilliseconds,
-            fixture.Monitor.ApplicationGaps, fixture.Monitor.NativeGaps, observation = fixture.Monitor.Observe().Sequence }));
+            fixture.Monitor.ApplicationGaps, fixture.Monitor.NativeGaps, sequence = finalObservation.Sequence, finalObservation.DroppedThrough,
+            finalObservation.Reliable, finalEvents = finalObservation.Events.TakeLast(6) }));
         Assert.Equal("Completed", result.State);
         Assert.Equal(count, result.Deleted);
         Assert.Equal(count, CleanupRecovery.Inspect(journal, plan.Id.ToString()).Count(e => e.State == "Deleted"));
