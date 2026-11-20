@@ -38,12 +38,19 @@ public sealed class DirectoryMonitor : IDisposable
         {
             if (!researchScanDeferred) throw new InvalidOperationException("Research scan lease was not held.");
             researchScanDeferred = false;
-            if (Volatile.Read(ref disposed) == 0) Hint();
+            if (Volatile.Read(ref disposed) == 0) RequestFullScan();
         }
     }
     private DirectorySnapshot snapshot = new(new Dictionary<string, Files.FileSnapshot>(), ["Initial scan pending"], DateTimeOffset.MinValue);
     private long applicationGaps, nativeGaps, scanGaps, watcherErrors, revision;
     private long scanTicks;
+    // Set by calibration, watcher failures and lost hints; cleared only when a complete scan starts.
+    private int fullScanRequested = 1;
+    // Highest notification sequence already reflected in the published snapshot.
+    private long appliedThrough;
+    private long fullScans, incrementalRefreshes;
+    internal long FullScans => Interlocked.Read(ref fullScans);
+    internal long IncrementalRefreshes => Interlocked.Read(ref incrementalRefreshes);
     internal TimeSpan ScanTime => TimeSpan.FromSeconds((double)Interlocked.Read(ref scanTicks) / Stopwatch.Frequency);
     private int disposed;
     private long lastActivityTicks;
@@ -91,8 +98,11 @@ public sealed class DirectoryMonitor : IDisposable
         hints = Channel.CreateBounded<bool>(new BoundedChannelOptions(queueCapacity) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true });
         watcher = new FileSystemWatcher(this.root)
         {
-            IncludeSubdirectories = true, InternalBufferSize = 4096,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite | NotifyFilters.Attributes
+            // 64 KiB is the documented maximum useful size; a larger buffer reduces native overflows (full rescans).
+            IncludeSubdirectories = true, InternalBufferSize = 65536,
+            // CreationTime is part of the stored identity and Security changes ChangeTime; incremental refresh needs both.
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite |
+                NotifyFilters.Attributes | NotifyFilters.CreationTime | NotifyFilters.Security
         };
         void Changed(object sender, FileSystemEventArgs args)
         {
@@ -136,12 +146,21 @@ public sealed class DirectoryMonitor : IDisposable
             // Keep the failure in the existing persisted cumulative gap count as well.
             Interlocked.Increment(ref scanGaps);
         }
+        RequestFullScan();
+    }
+
+    private void RequestFullScan()
+    {
+        Interlocked.Exchange(ref fullScanRequested, 1);
         Hint();
     }
 
     private void Hint()
     {
-        if (!hints.Writer.TryWrite(true)) Interlocked.Increment(ref applicationGaps);
+        if (hints.Writer.TryWrite(true)) return;
+        Interlocked.Increment(ref applicationGaps);
+        // A lost hint never loses the notification itself, but stay conservative and reconcile fully.
+        Interlocked.Exchange(ref fullScanRequested, 1);
     }
 
     private async Task Collect()
@@ -157,16 +176,33 @@ public sealed class DirectoryMonitor : IDisposable
                 lock (ScanGate)
                 {
                     if (researchScanDeferred) continue;
-                    long sequenceAtStart;
-                    lock (notificationSync) sequenceAtStart = notificationSequence;
+                    long sequenceAtStart, dropped;
+                    ImmutableList<DirectoryNotification> history;
+                    lock (notificationSync) { sequenceAtStart = notificationSequence; dropped = droppedThrough; history = notifications; }
                     BeforeScan?.Invoke();
                     var started = Stopwatch.GetTimestamp();
-                    DirectorySnapshot next;
-                    try { next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files, absolutePaths: absolutePaths); }
+                    DirectorySnapshot? next = null;
+                    try
+                    {
+                        // Incremental refresh only when every notification since the last snapshot is still held.
+                        if (Interlocked.Exchange(ref fullScanRequested, 0) == 0 && dropped <= appliedThrough &&
+                            researchScanCompletion is not { Task.IsCompleted: false })
+                        {
+                            var pending = history.Where(e => e.Sequence > appliedThrough && e.Sequence <= sequenceAtStart).ToArray();
+                            next = IncrementalRefresh.TryApply(root, Snapshot, pending, absolutePaths, stop.Token);
+                            if (next is not null) Interlocked.Increment(ref incrementalRefreshes);
+                        }
+                        if (next is null)
+                        {
+                            next = DirectoryScanner.Scan(root, stop.Token, previous: Snapshot.Files, absolutePaths: absolutePaths);
+                            Interlocked.Increment(ref fullScans);
+                        }
+                    }
                     finally
                     {
                         Interlocked.Add(ref scanTicks, Stopwatch.GetTimestamp() - started);
                     }
+                    appliedThrough = sequenceAtStart;
                     if (next.Gaps.Count != 0) Interlocked.Add(ref scanGaps, next.Gaps.Count);
                     lock (sync) snapshot = next;
                     Interlocked.Increment(ref revision);
@@ -188,7 +224,8 @@ public sealed class DirectoryMonitor : IDisposable
         }
     }
 
-    public void Rescan() => Hint();
+    // Calibration: always a complete scan, never an incremental refresh.
+    public void Rescan() => RequestFullScan();
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;

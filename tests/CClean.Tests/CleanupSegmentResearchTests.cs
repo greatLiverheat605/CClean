@@ -80,6 +80,8 @@ public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelpe
         for (var batch = 0; batch < batches; batch++)
         {
             var baselineScan = fixture.Monitor.ScanTime;
+            var baselineFullScans = fixture.Monitor.FullScans;
+            var baselineIncrementalRefreshes = fixture.Monitor.IncrementalRefreshes;
             var baselineRevision = fixture.Monitor.Revision;
             var baselineReview = reviewTicks; var baselinePrepare = prepareTicks;
             var baselineDelete = deleteTicks; var baselineResult = resultTicks;
@@ -110,6 +112,8 @@ public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelpe
                 retainedResearchReceipts = executor.RetainedResearchReceiptCount,
                 scanGateWaitMs = executor.ScanGateWait.TotalMilliseconds,
                 scanCount = fixture.Monitor.Revision - baselineRevision,
+                fullScans = fixture.Monitor.FullScans - baselineFullScans,
+                incrementalRefreshes = fixture.Monitor.IncrementalRefreshes - baselineIncrementalRefreshes,
                 scanMs = (fixture.Monitor.ScanTime - baselineScan).TotalMilliseconds,
                 validityUsedBeforeExecutionMs,
                 reviewMs = (reviewTicks - baselineReview) * 1000d / Stopwatch.Frequency,
