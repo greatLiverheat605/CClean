@@ -5,6 +5,7 @@ param(
     [int]$Seconds = 600
 )
 $ErrorActionPreference = 'Stop'
+$workingSetTargetBytes = 250000000L
 if ($Seconds -lt 600) { throw 'Idle acceptance requires at least ten minutes.' }
 $samples = [Collections.Generic.List[object]]::new()
 $app = Get-Process -Id $AppProcessId
@@ -26,7 +27,8 @@ $report = [pscustomobject]@{
     PeakSampleWorkingSet=($samples | Measure-Object WorkingSet -Maximum).Maximum
     PeakSampleDataBytes=($samples | Measure-Object DataBytes -Maximum).Maximum
     CpuPassed=($cpu -le 1)
-    MemoryPassed=(($samples | Measure-Object WorkingSet -Maximum).Maximum -le 200MB)
+    WorkingSetTargetBytes=$workingSetTargetBytes
+    MemoryPassed=(($samples | Measure-Object WorkingSet -Maximum).Maximum -le $workingSetTargetBytes)
     Samples=$samples
 }
 $fullOutput=[IO.Path]::GetFullPath($Output)

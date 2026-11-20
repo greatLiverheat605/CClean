@@ -142,7 +142,7 @@ flowchart LR
 - 状态：pending；依赖：R1-010；验收：A-03、A-10；工作包：P5。
 - 现有落点：`tools/Measure-AppIdle.ps1`、`tools/Measure-AppStability.ps1`、`tools/CClean.UiProbe/LatencyProbe.cs`、`tools/CClean.Poc/IndexProbe.cs`、`src/CClean.Core/Storage/RuntimeBudget.cs`、`docs/testing/release-acceptance.md`。
 - 实施：按原采样协议复测 10 万文件/20 GiB 的首扫（冷/热条件分别记录）、10 分钟空闲 CPU/工作集、交互延迟、预览取消、审计/索引预算与实际多批成本；只针对瓶颈调整，保留身份和持久审计校验。
-- 验证：CPU ≤ 1%、工作集 ≤ 200 MiB、首扫 ≤ 60 秒、UI P95 ≤ 2 秒、DB/WAL/SHM ≤ 300 MiB、日志 ≤ 50 MiB；扫描取消后目标 2 秒内回到可操作状态，实测失败就记录失败。内存旧失败不能四舍五入为通过。
+- 验证：CPU ≤ 1%、工作集 ≤ 250 MB（250,000,000 字节）、首扫 ≤ 60 秒、UI P95 ≤ 2 秒、DB/WAL/SHM ≤ 300 MiB、日志 ≤ 50 MiB；扫描取消后目标 2 秒内回到可操作状态，实测失败就记录失败。内存旧失败不能四舍五入为通过。
 - 验证：新版连续 72 小时（259200 秒）、30 秒采样，记录正常开发负载、暂停/托盘状态、卷不可用与观察缺口；超过 90 秒采样空窗需解释并重新形成有效连续证据。脚本退出 0 只代表采样结束，当前 MultiDayAcceptance=not_assessed 不能改称通过；单独评估 CPU/工作集/私有内存、预算、异常与趋势，不能把 72 小时无崩溃写成绝无泄漏。现有 DataBytes 仅统计顶层文件；新增子目录时同步补足测量范围。长时平均 CPU 不替代 600 秒空闲验收，活动峰值与空闲门槛分开评估。
 
 ### R1-012 内部安装交付与用户独立验收

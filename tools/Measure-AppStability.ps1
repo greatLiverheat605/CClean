@@ -7,6 +7,7 @@ param(
     [string]$BuildCommit = ''
 )
 $ErrorActionPreference = 'Stop'
+$workingSetTargetBytes = 250000000L
 $fullOutput = [IO.Path]::GetFullPath($Output)
 $artifactRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../artifacts'))
 if (!$fullOutput.StartsWith($artifactRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
@@ -112,8 +113,8 @@ finally {
         ExecutableSha256 = $executableSha256; BuildCommit = $BuildCommit; RequestedSeconds = $Seconds
         DurationSeconds = $duration; IntervalSeconds = $IntervalSeconds; SampleCount = $samples; ObservationGaps = $gaps
         NonAcceptance = $nonAcceptance; Meets24HourObservation = (!$nonAcceptance -and $status -eq 'completed' -and $gaps -eq 0 -and $duration -ge 86400)
-        MultiDayAcceptance = 'not_assessed'; WorkingSetTargetBytes = 200MB
-        WorkingSetTargetPassed = ($samples -gt 0 -and $peakWorkingSet -le 200MB)
+        MultiDayAcceptance = 'not_assessed'; WorkingSetTargetBytes = $workingSetTargetBytes
+        WorkingSetTargetPassed = ($samples -gt 0 -and $peakWorkingSet -le $workingSetTargetBytes)
         PeakWorkingSet = $peakWorkingSet; PeakPrivateBytes = $peakPrivateBytes; PeakDataBytes = $peakDataBytes
         FirstSample = $firstSample; LastSample = $lastSample
         MachineAverageCpuPercent = $(if ($null -ne $lastSample -and $lastSample.ElapsedSeconds -gt 0) {

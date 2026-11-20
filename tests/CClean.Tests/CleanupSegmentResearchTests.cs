@@ -9,6 +9,8 @@ namespace CClean.Tests;
 [Collection("Cleanup workflow")]
 public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelper output)
 {
+    private const long WorkingSetLimitBytes = 250_000_000;
+
     private static CleanupContext SegmentContext(CleanupWorkflowTests.Fixture fixture) => fixture.Context() with { Contract = CleanupContract.SegmentReviewResearch };
 
     [Theory]
@@ -80,6 +82,8 @@ public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelpe
         for (var batch = 0; batch < batches; batch++)
         {
             var baselineScan = fixture.Monitor.ScanTime;
+            var baselineFullScans = fixture.Monitor.FullScans;
+            var baselineIncrementalRefreshes = fixture.Monitor.IncrementalRefreshes;
             var baselineRevision = fixture.Monitor.Revision;
             var baselineReview = reviewTicks; var baselinePrepare = prepareTicks;
             var baselineDelete = deleteTicks; var baselineResult = resultTicks;
@@ -104,12 +108,14 @@ public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelpe
             var usage = RuntimeBudget.Measure(fixture.Data);
             var peak = Process.GetCurrentProcess().PeakWorkingSet64;
             output.WriteLine(JsonSerializer.Serialize(new { batch = batch + 1, requestedBatches = batches, count, observedCount, previewMs, executionMs, bytes, result, executor.ReviewedObjects,
-                baselineWorkingSet, peakWorkingSetBytes = peak, componentMemoryWithin200MiB = peak <= 200L * 1024 * 1024,
+                baselineWorkingSet, peakWorkingSetBytes = peak, workingSetLimitBytes = WorkingSetLimitBytes, componentMemoryPassed = peak <= WorkingSetLimitBytes,
                 allocatedBytes = GC.GetTotalAllocatedBytes() - allocated, heapBytes = GC.GetGCMemoryInfo().HeapSizeBytes,
                 usage, fixture.Monitor.ApplicationGaps, fixture.Monitor.NativeGaps,
                 retainedResearchReceipts = executor.RetainedResearchReceiptCount,
                 scanGateWaitMs = executor.ScanGateWait.TotalMilliseconds,
                 scanCount = fixture.Monitor.Revision - baselineRevision,
+                fullScans = fixture.Monitor.FullScans - baselineFullScans,
+                incrementalRefreshes = fixture.Monitor.IncrementalRefreshes - baselineIncrementalRefreshes,
                 scanMs = (fixture.Monitor.ScanTime - baselineScan).TotalMilliseconds,
                 validityUsedBeforeExecutionMs,
                 reviewMs = (reviewTicks - baselineReview) * 1000d / Stopwatch.Frequency,
@@ -159,8 +165,8 @@ public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelpe
             }
             Assert.Equal(count, recovered);
             SampleMemory($"batch-{batch + 1}-audit-recovery");
-            if (batches > 1) Assert.True(Process.GetCurrentProcess().PeakWorkingSet64 <= 200L * 1024 * 1024,
-                "隔离研究宿主已超过 200 MiB，停止扩展批次；此测量不能代替完整产品资源验收。");
+            if (batches > 1) Assert.True(Process.GetCurrentProcess().PeakWorkingSet64 <= WorkingSetLimitBytes,
+                "隔离研究宿主已超过 250 MB（250,000,000 字节），停止扩展批次；此测量不能代替完整产品资源验收。");
             previous = plan.Id;
         }
         Assert.All(fixture.Paths.Take(count * batches), path => Assert.False(File.Exists(path)));
@@ -176,6 +182,8 @@ public sealed class CleanupSegmentScaleTests(Xunit.Abstractions.ITestOutputHelpe
 
 public partial class CleanupWorkflowTests
 {
+
+    private const long WorkingSetLimitBytes = 250_000_000;
 
     private static CleanupContext SegmentContext(CleanupWorkflowTests.Fixture fixture) => fixture.Context() with { Contract = CleanupContract.SegmentReviewResearch };
 

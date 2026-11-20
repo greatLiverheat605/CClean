@@ -60,6 +60,7 @@ public partial class CleanupWorkflowTests(Xunit.Abstractions.ITestOutputHelper o
         var result = await new CleanupExecutor(journal).ExecuteApproved(plan, () => Task.FromResult(fixture.Context()));
         var finalObservation = fixture.Monitor.Observe();
         output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { count, result, elapsedMs = watch.ElapsedMilliseconds,
+            fixture.Monitor.FullScans, fixture.Monitor.IncrementalRefreshes, scanMs = fixture.Monitor.ScanTime.TotalMilliseconds,
             fixture.Monitor.ApplicationGaps, fixture.Monitor.NativeGaps, sequence = finalObservation.Sequence, finalObservation.DroppedThrough,
             finalObservation.Reliable, finalEvents = finalObservation.Events.TakeLast(6) }));
         Assert.Equal("Completed", result.State);

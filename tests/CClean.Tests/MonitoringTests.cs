@@ -222,6 +222,7 @@ public class MonitoringTests
         using var monitor = new DirectoryMonitor(box.RunDirectory);
         Assert.True(SpinWait.SpinUntil(() => monitor.HasContinuousObservation, TimeSpan.FromSeconds(10)));
         var revision = monitor.Revision;
+        var fullScans = monitor.FullScans;
         var sequence = monitor.Observe().Sequence;
         Task scanned;
         lock (monitor.ScanGate)
@@ -233,7 +234,6 @@ public class MonitoringTests
         {
             box.CreateFixture("during.bin", 10);
             Assert.True(SpinWait.SpinUntil(() => monitor.Observe().Sequence > sequence, TimeSpan.FromSeconds(10)));
-            monitor.Rescan();
             await Task.Delay(350);
             Assert.Equal(revision, monitor.Revision);
             Assert.False(scanned.IsCompleted);
@@ -248,6 +248,7 @@ public class MonitoringTests
             }
         }
         await scanned.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(monitor.FullScans > fullScans);
         Assert.True(monitor.Revision > revision);
         Assert.Contains(monitor.Snapshot.Files, f => f.Key == "during.bin");
         Assert.True(monitor.HasContinuousObservation);
@@ -260,6 +261,7 @@ public class MonitoringTests
         using var monitor = new DirectoryMonitor(box.RunDirectory);
         Assert.True(SpinWait.SpinUntil(() => monitor.HasContinuousObservation, TimeSpan.FromSeconds(10)));
         var baseline = monitor.Revision;
+        var fullScans = monitor.FullScans;
         lock (monitor.ScanGate) monitor.BeginResearchScanDeferral();
         var completion = monitor.ResearchScanCompleted;
         using var secondEntered = new ManualResetEventSlim();
@@ -284,7 +286,89 @@ public class MonitoringTests
         finally { release.Set(); monitor.BeforeScan = null; }
         await completion.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.True(monitor.Revision >= baseline + 2);
+        Assert.True(monitor.FullScans >= fullScans + 2);
         Assert.Contains(monitor.Snapshot.Files, file => file.Key == "during-post-batch.bin");
+    }
+
+    private static async Task WaitUntil(Func<bool> condition, string because)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(25);
+        Assert.True(condition(), because);
+    }
+
+    private static bool MatchesCompleteScan(DirectoryMonitor monitor, string root, bool absolutePaths)
+    {
+        var live = monitor.Snapshot;
+        var truth = DirectoryScanner.Scan(root, absolutePaths: absolutePaths);
+        return live.Gaps.Count == 0 && truth.Gaps.Count == 0 && live.Files.Count == truth.Files.Count &&
+            truth.Files.All(entry => live.Files.TryGetValue(entry.Key, out var file) &&
+                file == entry.Value);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NotificationsRefreshOnlyTouchedPathsAndConvergeToCompleteScan(bool absolutePaths)
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-incremental-" + Guid.NewGuid().ToString("N")));
+        var root = box.RunDirectory;
+        var same = box.CreateFixture("same.bin", 10);
+        var grow = box.CreateFixture("grow.bin", 10);
+        var move = box.CreateFixture("move.bin", 10);
+        var delete = box.CreateFixture("delete.bin", 10);
+        using var monitor = new DirectoryMonitor(root, absolutePaths: absolutePaths);
+        await WaitUntil(() => monitor.HasContinuousObservation, "initial complete scan");
+        var sameKey = absolutePaths ? same : Path.GetFileName(same);
+        var sameBefore = monitor.Snapshot.Files[sameKey];
+
+        File.WriteAllBytes(grow, [1, 2, 3, 4]);
+        File.Move(move, Path.Combine(root, "moved.bin"));
+        File.Delete(delete);
+        box.CreateFixture("created.bin", 20);
+
+        await WaitUntil(() => MatchesCompleteScan(monitor, root, absolutePaths), "incremental state equals a complete scan");
+        Assert.Equal(1, monitor.FullScans);
+        Assert.True(monitor.IncrementalRefreshes > 0);
+        Assert.True(monitor.HasContinuousObservation);
+        Assert.Same(sameBefore, monitor.Snapshot.Files[sameKey]);
+    }
+
+    [Fact]
+    public async Task DirectoryMoveAndReplacementTriggerFullScanAndReconcileDescendants()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-directory-" + Guid.NewGuid().ToString("N")));
+        var root = Path.Combine(box.RunDirectory, "root");
+        var incoming = Path.Combine(box.RunDirectory, "incoming");
+        var original = Path.Combine(root, "old");
+        Directory.CreateDirectory(original);
+        Directory.CreateDirectory(incoming);
+        File.WriteAllBytes(Path.Combine(original, "old.bin"), [1]);
+        File.WriteAllBytes(Path.Combine(incoming, "new.bin"), [2]);
+        using var monitor = new DirectoryMonitor(root);
+        await WaitUntil(() => monitor.HasContinuousObservation, "initial complete scan");
+        var fullScans = monitor.FullScans;
+        Directory.Move(original, Path.Combine(box.RunDirectory, "outside"));
+        Directory.Move(incoming, original);
+        await WaitUntil(() => MatchesCompleteScan(monitor, root, false), "rescanned directory replacement");
+        Assert.True(monitor.FullScans > fullScans);
+        Assert.Equal(Path.Combine("old", "new.bin"), Assert.Single(monitor.Snapshot.Files).Key);
+    }
+
+    [Fact]
+    public async Task CalibrationAndWatcherFailuresStillForceCompleteScans()
+    {
+        using var box = new ExperimentSandbox(Path.Combine(Path.GetTempPath(), "cclean-incremental-full-" + Guid.NewGuid().ToString("N")));
+        box.CreateFixture("known.bin", 10);
+        using var monitor = new DirectoryMonitor(box.RunDirectory);
+        await WaitUntil(() => monitor.HasContinuousObservation, "initial complete scan");
+        var full = monitor.FullScans;
+        monitor.Rescan();
+        await WaitUntil(() => monitor.FullScans > full, "calibration is complete");
+        full = monitor.FullScans;
+        monitor.ReportWatcherError(new InternalBufferOverflowException("controlled overflow"));
+        await WaitUntil(() => monitor.FullScans > full, "overflow reconciles with a complete scan");
+        Assert.False(monitor.HasContinuousObservation);
     }
 
     [Fact]

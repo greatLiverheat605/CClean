@@ -62,14 +62,18 @@ internal static class WorkspaceCapacityProbe
         });
         var app = new App();
         app.InitializeComponent();
-        var attached = false;
         var failed = false;
-        app.Activated += (_, _) =>
+        app.Startup += (_, _) =>
         {
-            if (attached || app.MainWindow is not MainWindow window) return;
-            attached = true;
             app.Dispatcher.BeginInvoke(async () =>
             {
+                if (app.MainWindow is not MainWindow window)
+                {
+                    writer.WriteLine(JsonSerializer.Serialize(new { phase = "failed", error = "Main window unavailable after startup." }));
+                    failed = true;
+                    app.Shutdown(1);
+                    return;
+                }
                 try
                 {
                     async Task Until(Func<bool> ready, int minutes = 10)
